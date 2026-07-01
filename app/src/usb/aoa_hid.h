@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "hid/hid_event.h"
+#include "hid/hid_gamepad.h"
 #include "usb/usb.h"
 #include "util/acksync.h"
 #include "util/thread.h"
@@ -44,6 +45,11 @@ struct sc_aoa {
     sc_cond event_cond;
     bool stopped;
     struct sc_aoa_event_queue queue;
+
+    // Same ordering invariant as the UHID controller queue.
+    struct sc_hid_input pending_gamepad_axis[SC_MAX_GAMEPADS];
+    uint8_t pending_gamepad_axis_mask;
+    uint8_t next_pending_gamepad_axis;
 
     struct sc_acksync *acksync;
 };
@@ -83,6 +89,14 @@ bool
 sc_aoa_push_input_with_ack_to_wait(struct sc_aoa *aoa,
                                    const struct sc_hid_input *hid_input,
                                    uint64_t ack_to_wait);
+
+bool
+sc_aoa_push_gamepad_axis(struct sc_aoa *aoa,
+                         const struct sc_hid_input *hid_input);
+
+bool
+sc_aoa_push_gamepad_button(struct sc_aoa *aoa,
+                           const struct sc_hid_input *hid_input);
 
 static inline bool
 sc_aoa_push_input(struct sc_aoa *aoa, const struct sc_hid_input *hid_input) {

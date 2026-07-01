@@ -79,6 +79,8 @@ sc_aoa_init(struct sc_aoa *aoa, struct sc_usb *usb,
     }
 
     aoa->stopped = false;
+    aoa->pending_gamepad_axis_mask = 0;
+    aoa->next_pending_gamepad_axis = 0;
     aoa->acksync = acksync;
     aoa->usb = usb;
 
@@ -256,6 +258,62 @@ sc_aoa_push_input_with_ack_to_wait(struct sc_aoa *aoa,
     return pushed;
 }
 
+static unsigned
+sc_aoa_gamepad_index(const struct sc_hid_input *hid_input) {
+    assert(hid_input->hid_id >= SC_HID_ID_GAMEPAD_FIRST);
+    assert(hid_input->hid_id <= SC_HID_ID_GAMEPAD_LAST);
+    return hid_input->hid_id - SC_HID_ID_GAMEPAD_FIRST;
+}
+
+bool
+sc_aoa_push_gamepad_axis(struct sc_aoa *aoa,
+                         const struct sc_hid_input *hid_input) {
+    if (sc_get_log_level() <= SC_LOG_LEVEL_VERBOSE) {
+        sc_hid_input_log(hid_input);
+    }
+
+    unsigned idx = sc_aoa_gamepad_index(hid_input);
+
+    sc_mutex_lock(&aoa->mutex);
+    aoa->pending_gamepad_axis[idx] = *hid_input;
+    aoa->pending_gamepad_axis_mask |= 1 << idx;
+    sc_cond_signal(&aoa->event_cond);
+    sc_mutex_unlock(&aoa->mutex);
+
+    return true;
+}
+
+bool
+sc_aoa_push_gamepad_button(struct sc_aoa *aoa,
+                           const struct sc_hid_input *hid_input) {
+    if (sc_get_log_level() <= SC_LOG_LEVEL_VERBOSE) {
+        sc_hid_input_log(hid_input);
+    }
+
+    unsigned idx = sc_aoa_gamepad_index(hid_input);
+
+    sc_mutex_lock(&aoa->mutex);
+    aoa->pending_gamepad_axis_mask &= ~(1 << idx);
+
+    // Button reports are non-droppable to preserve both press and release.
+    struct sc_aoa_event *aoa_event =
+        sc_vecdeque_push_uninitialized(&aoa->queue);
+    if (!aoa_event) {
+        LOG_OOM();
+        sc_mutex_unlock(&aoa->mutex);
+        return false;
+    }
+
+    aoa_event->type = SC_AOA_EVENT_TYPE_INPUT;
+    aoa_event->input.hid = *hid_input;
+    aoa_event->input.ack_to_wait = SC_SEQUENCE_INVALID;
+    sc_cond_signal(&aoa->event_cond);
+
+    sc_mutex_unlock(&aoa->mutex);
+
+    return true;
+}
+
 bool
 sc_aoa_push_open(struct sc_aoa *aoa, const struct sc_hid_open *hid_open,
                  bool exit_on_open_error) {
@@ -296,6 +354,11 @@ sc_aoa_push_close(struct sc_aoa *aoa, const struct sc_hid_close *hid_close) {
     }
 
     sc_mutex_lock(&aoa->mutex);
+    if (hid_close->hid_id >= SC_HID_ID_GAMEPAD_FIRST
+            && hid_close->hid_id <= SC_HID_ID_GAMEPAD_LAST) {
+        unsigned idx = hid_close->hid_id - SC_HID_ID_GAMEPAD_FIRST;
+        aoa->pending_gamepad_axis_mask &= ~(1 << idx);
+    }
     bool was_empty = sc_vecdeque_is_empty(&aoa->queue);
 
     // a CLOSE event is non-droppable, so push it to the queue even above the
@@ -414,7 +477,8 @@ run_aoa_thread(void *data) {
 
     for (;;) {
         sc_mutex_lock(&aoa->mutex);
-        while (!aoa->stopped && sc_vecdeque_is_empty(&aoa->queue)) {
+        while (!aoa->stopped && sc_vecdeque_is_empty(&aoa->queue)
+                && !aoa->pending_gamepad_axis_mask) {
             sc_cond_wait(&aoa->event_cond, &aoa->mutex);
         }
         if (aoa->stopped) {
@@ -423,8 +487,26 @@ run_aoa_thread(void *data) {
             break;
         }
 
-        assert(!sc_vecdeque_is_empty(&aoa->queue));
-        struct sc_aoa_event event = sc_vecdeque_pop(&aoa->queue);
+        assert(!sc_vecdeque_is_empty(&aoa->queue)
+               || aoa->pending_gamepad_axis_mask);
+
+        struct sc_aoa_event event;
+        if (!sc_vecdeque_is_empty(&aoa->queue)) {
+            event = sc_vecdeque_pop(&aoa->queue);
+        } else {
+            event.type = SC_AOA_EVENT_TYPE_INPUT;
+            event.input.ack_to_wait = SC_SEQUENCE_INVALID;
+            unsigned idx = aoa->next_pending_gamepad_axis;
+            uint8_t mask = 1 << idx;
+            while (!(aoa->pending_gamepad_axis_mask & mask)) {
+                idx = (idx + 1) % SC_MAX_GAMEPADS;
+                mask = 1 << idx;
+            }
+            event.input.hid = aoa->pending_gamepad_axis[idx];
+            aoa->pending_gamepad_axis_mask &= ~mask;
+            aoa->next_pending_gamepad_axis =
+                (idx + 1) % SC_MAX_GAMEPADS;
+        }
         sc_mutex_unlock(&aoa->mutex);
 
         bool cont = sc_aoa_process_event(aoa, &event, &vec_open);

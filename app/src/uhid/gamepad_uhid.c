@@ -19,7 +19,7 @@
 static void
 sc_gamepad_uhid_send_input(struct sc_gamepad_uhid *gamepad,
                            const struct sc_hid_input *hid_input,
-                           const char *name) {
+                           bool axis, const char *name) {
     struct sc_control_msg msg;
     msg.type = SC_CONTROL_MSG_TYPE_UHID_INPUT;
     msg.uhid_input.id = hid_input->hid_id;
@@ -28,7 +28,10 @@ sc_gamepad_uhid_send_input(struct sc_gamepad_uhid *gamepad,
     memcpy(msg.uhid_input.data, hid_input->data, hid_input->size);
     msg.uhid_input.size = hid_input->size;
 
-    if (!sc_controller_push_msg(gamepad->controller, &msg)) {
+    bool pushed = axis
+        ? sc_controller_push_gamepad_axis(gamepad->controller, &msg)
+        : sc_controller_push_gamepad_button(gamepad->controller, &msg);
+    if (!pushed) {
         LOGE("Could not push UHID_INPUT message (%s)", name);
     }
 }
@@ -104,7 +107,7 @@ sc_gamepad_processor_process_gamepad_axis(struct sc_gamepad_processor *gp,
         return;
     }
 
-    sc_gamepad_uhid_send_input(gamepad, &hid_input, "gamepad axis");
+    sc_gamepad_uhid_send_input(gamepad, &hid_input, true, "gamepad axis");
 }
 
 static void
@@ -118,7 +121,7 @@ sc_gamepad_processor_process_gamepad_button(struct sc_gamepad_processor *gp,
         return;
     }
 
-    sc_gamepad_uhid_send_input(gamepad, &hid_input, "gamepad button");
+    sc_gamepad_uhid_send_input(gamepad, &hid_input, false, "gamepad button");
 
 }
 

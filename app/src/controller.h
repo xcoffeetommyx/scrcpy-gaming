@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "control_msg.h"
+#include "hid/hid_gamepad.h"
 #include "receiver.h"
 #include "util/acksync.h"
 #include "util/net.h"
@@ -22,6 +23,13 @@ struct sc_controller {
     bool stopped;
 
     struct sc_control_msg_queue queue;
+
+    // Axis reports are coalesced per gamepad. Button reports stay in queue and
+    // clear the corresponding pending axis report, since they contain the
+    // complete gamepad state.
+    struct sc_control_msg pending_gamepad_axis[SC_MAX_GAMEPADS];
+    uint8_t pending_gamepad_axis_mask;
+    uint8_t next_pending_gamepad_axis;
 
     // The RESIZE_DISPLAY control message is never enqueued, it has top priority
     // and a new request overwrites any previous one
@@ -67,6 +75,14 @@ sc_controller_join(struct sc_controller *controller);
 bool
 sc_controller_push_msg(struct sc_controller *controller,
                        const struct sc_control_msg *msg);
+
+bool
+sc_controller_push_gamepad_axis(struct sc_controller *controller,
+                                const struct sc_control_msg *msg);
+
+bool
+sc_controller_push_gamepad_button(struct sc_controller *controller,
+                                  const struct sc_control_msg *msg);
 
 void
 sc_controller_resize_display(struct sc_controller *controller,

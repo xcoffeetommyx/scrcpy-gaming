@@ -54,7 +54,7 @@ sc_gamepad_processor_process_gamepad_axis(struct sc_gamepad_processor *gp,
         return;
     }
 
-    if (!sc_aoa_push_input(gamepad->aoa, &hid_input)) {
+    if (!sc_aoa_push_gamepad_axis(gamepad->aoa, &hid_input)) {
         LOGW("Could not push AOA HID input (gamepad axis)");
     }
 }
@@ -70,7 +70,7 @@ sc_gamepad_processor_process_gamepad_button(struct sc_gamepad_processor *gp,
         return;
     }
 
-    if (!sc_aoa_push_input(gamepad->aoa, &hid_input)) {
+    if (!sc_aoa_push_gamepad_button(gamepad->aoa, &hid_input)) {
         LOGW("Could not push AOA HID input (gamepad button)");
     }
 }
