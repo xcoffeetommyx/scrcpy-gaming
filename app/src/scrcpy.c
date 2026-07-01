@@ -294,12 +294,14 @@ init_sdl_gamepads(void) {
     for (int i = 0; i < count; ++i) {
         SDL_JoystickID joystick = joysticks[i];
         if (SDL_IsGamepad(joystick)) {
-            SDL_Event event;
+            SDL_Event event = {0};
             event.gdevice.type = SDL_EVENT_GAMEPAD_ADDED;
-            event.gdevice.which = i;
+            event.gdevice.which = joystick;
             SDL_PushEvent(&event);
         }
     }
+
+    SDL_free(joysticks);
 }
 
 enum scrcpy_exit_code
