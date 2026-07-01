@@ -121,6 +121,70 @@ static void test_options2(void) {
     assert(opts->record_format == SC_RECORD_FORMAT_MP4);
 }
 
+static void test_game_mode(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+        .help = false,
+        .version = false,
+    };
+
+    char *argv[] = {"scrcpy", "--game-mode"};
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+
+    const struct scrcpy_options *opts = &args.opts;
+    assert(opts->gamepad_input_mode == SC_GAMEPAD_INPUT_MODE_UHID);
+    assert(opts->video_codec == SC_CODEC_H264);
+    assert(opts->video_buffer == 0);
+    assert(opts->audio_buffer == 0);
+    assert(!opts->mipmaps);
+    assert(!opts->forward_key_repeat);
+}
+
+static void test_game_mode_overrides(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+        .help = false,
+        .version = false,
+    };
+
+    char *argv[] = {
+        "scrcpy",
+        "--video-codec=h265",
+        "--game-mode",
+        "--gamepad=disabled",
+        "--video-buffer=10",
+        "--audio-buffer=50",
+    };
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+
+    const struct scrcpy_options *opts = &args.opts;
+    assert(opts->gamepad_input_mode == SC_GAMEPAD_INPUT_MODE_DISABLED);
+    assert(opts->video_codec == SC_CODEC_H265);
+    assert(opts->video_buffer == SC_TICK_FROM_MS(10));
+    assert(opts->audio_buffer == SC_TICK_FROM_MS(50));
+    assert(!opts->mipmaps);
+    assert(!opts->forward_key_repeat);
+}
+
+static void test_game_mode_without_audio(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+        .help = false,
+        .version = false,
+    };
+
+    char *argv[] = {"scrcpy", "--game-mode", "--no-audio"};
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+    assert(!args.opts.audio);
+    assert(args.opts.audio_buffer == -1);
+}
+
 static void test_parse_shortcut_mods(void) {
     uint8_t mods;
     bool ok;
@@ -157,6 +221,9 @@ int main(int argc, char *argv[]) {
     test_flag_help();
     test_options();
     test_options2();
+    test_game_mode();
+    test_game_mode_overrides();
+    test_game_mode_without_audio();
     test_parse_shortcut_mods();
     return 0;
 }

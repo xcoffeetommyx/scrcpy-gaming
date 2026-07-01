@@ -109,6 +109,7 @@ enum {
     OPT_KEEP_ACTIVE,
     OPT_BACKGROUND_COLOR,
     OPT_RENDER_FIT,
+    OPT_GAME_MODE,
 };
 
 struct sc_option {
@@ -405,6 +406,14 @@ static const struct sc_option options[] = {
         .longopt = "force-adb-forward",
         .text = "Do not attempt to use \"adb reverse\" to connect to the "
                 "device.",
+    },
+    {
+        .longopt_id = OPT_GAME_MODE,
+        .longopt = "game-mode",
+        .text = "Enable a low-latency gaming preset. Unless explicitly "
+                "overridden, this sets --gamepad=uhid, --video-codec=h264, "
+                "--video-buffer=0, --audio-buffer=0 (when audio is enabled), "
+                "--no-mipmaps and --no-key-repeat.",
     },
     {
         .shortopt = 'G',
@@ -2470,6 +2479,14 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                        const char *optstring, const struct option *longopts) {
     struct scrcpy_options *opts = &args->opts;
 
+    bool game_mode = false;
+    bool gamepad_explicit = false;
+    bool video_codec_explicit = false;
+    bool video_buffer_explicit = false;
+    bool audio_buffer_explicit = false;
+    bool mipmaps_explicit = false;
+    bool key_repeat_explicit = false;
+
     optind = 0; // reset to start from the first argument in tests
 
     int c;
@@ -2670,9 +2687,11 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 break;
             case OPT_NO_MIPMAPS:
                 opts->mipmaps = false;
+                mipmaps_explicit = true;
                 break;
             case OPT_NO_KEY_REPEAT:
                 opts->forward_key_repeat = false;
+                key_repeat_explicit = true;
                 break;
             case OPT_VIDEO_CODEC_OPTIONS:
                 opts->video_codec_options = optarg;
@@ -2707,6 +2726,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 if (!parse_buffering_time(optarg, &opts->video_buffer)) {
                     return false;
                 }
+                video_buffer_explicit = true;
                 break;
             case OPT_NO_CLIPBOARD_AUTOSYNC:
                 opts->clipboard_autosync = false;
@@ -2737,6 +2757,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 if (!parse_video_codec(optarg, &opts->video_codec)) {
                     return false;
                 }
+                video_codec_explicit = true;
                 break;
             case OPT_AUDIO_CODEC:
                 if (!parse_audio_codec(optarg, &opts->audio_codec)) {
@@ -2793,6 +2814,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 if (!parse_buffering_time(optarg, &opts->audio_buffer)) {
                     return false;
                 }
+                audio_buffer_explicit = true;
                 break;
             case OPT_AUDIO_OUTPUT_BUFFER:
                 if (!parse_audio_output_buffer(optarg,
@@ -2859,11 +2881,16 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 break;
             case 'G':
                 opts->gamepad_input_mode = SC_GAMEPAD_INPUT_MODE_UHID_OR_AOA;
+                gamepad_explicit = true;
                 break;
             case OPT_GAMEPAD:
                 if (!parse_gamepad(optarg, &opts->gamepad_input_mode)) {
                     return false;
                 }
+                gamepad_explicit = true;
+                break;
+            case OPT_GAME_MODE:
+                game_mode = true;
                 break;
             case OPT_NEW_DISPLAY:
                 opts->new_display = optarg ? optarg : "";
@@ -2927,6 +2954,27 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
     if (index < argc) {
         LOGE("Unexpected additional argument: %s", argv[index]);
         return false;
+    }
+
+    if (game_mode) {
+        if (!gamepad_explicit) {
+            opts->gamepad_input_mode = SC_GAMEPAD_INPUT_MODE_UHID;
+        }
+        if (!video_codec_explicit) {
+            opts->video_codec = SC_CODEC_H264;
+        }
+        if (!video_buffer_explicit) {
+            opts->video_buffer = 0;
+        }
+        if (opts->audio && !audio_buffer_explicit) {
+            opts->audio_buffer = 0;
+        }
+        if (!mipmaps_explicit) {
+            opts->mipmaps = false;
+        }
+        if (!key_repeat_explicit) {
+            opts->forward_key_repeat = false;
+        }
     }
 
     // If a TCP/IP address is provided, then tcpip must be enabled
