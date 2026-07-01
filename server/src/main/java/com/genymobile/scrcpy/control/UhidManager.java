@@ -81,7 +81,9 @@ public final class UhidManager {
                 throw e;
             }
         } catch (ErrnoException e) {
-            throw new IOException(e);
+            String deviceName = name.isEmpty() ? "unnamed" : name;
+            throw new IOException("Could not create UHID device [" + id + "] "
+                    + deviceName + ": " + e.getMessage(), e);
         }
     }
 

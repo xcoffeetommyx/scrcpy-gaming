@@ -1,5 +1,6 @@
 #include "gamepad_aoa.h"
 
+#include <inttypes.h>
 #include <stdbool.h>
 
 #include "input_events.h"
@@ -21,7 +22,8 @@ sc_gamepad_processor_process_gamepad_added(struct sc_gamepad_processor *gp,
 
     // exit_on_error: false (a gamepad open failure should not exit scrcpy)
     if (!sc_aoa_push_open(gamepad->aoa, &hid_open, false)) {
-        LOGW("Could not push AOA HID open (gamepad)");
+        LOGW("Could not queue AOA gamepad registration [%" PRIu32 "]",
+             event->gamepad_id);
     }
 }
 

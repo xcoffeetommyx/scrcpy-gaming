@@ -2257,7 +2257,8 @@ parse_gamepad(const char *optarg, enum sc_gamepad_input_mode *mode) {
 #endif
     }
 
-    LOGE("Unsupported gamepad: %s (expected disabled or aoa)", optarg);
+    LOGE("Unsupported gamepad mode: %s (expected disabled, uhid or aoa)",
+         optarg);
     return false;
 }
 

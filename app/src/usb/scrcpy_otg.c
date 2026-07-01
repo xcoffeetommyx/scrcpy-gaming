@@ -74,6 +74,8 @@ scrcpy_otg(struct scrcpy_options *options) {
     }
 
     if (options->gamepad_input_mode != SC_GAMEPAD_INPUT_MODE_DISABLED) {
+        LOGI("Gamepad mode: AOA");
+
         if (!SDL_Init(SDL_INIT_GAMEPAD)) {
             LOGE("Could not initialize SDL gamepad: %s", SDL_GetError());
             // Not fatal, keyboard/mouse should still work

@@ -109,7 +109,8 @@ sc_aoa_register_hid(struct sc_aoa *aoa, uint16_t accessory_id,
                                          request, value, index, data, length,
                                          DEFAULT_TIMEOUT);
     if (result < 0) {
-        LOGE("REGISTER_HID: libusb error: %s", libusb_strerror(result));
+        LOGE("Could not register AOA HID device [%" PRIu16 "]: %s",
+             accessory_id, libusb_strerror(result));
         sc_usb_check_disconnected(aoa->usb, result);
         return false;
     }
@@ -372,7 +373,8 @@ sc_aoa_process_event(struct sc_aoa *aoa, struct sc_aoa_event *event,
                     // explicitly unregistered
                 }
             } else {
-                LOGW("Could not open AOA device: %" PRIu16, hid_open->hid_id);
+                LOGW("Could not initialize AOA HID device [%" PRIu16 "]",
+                     hid_open->hid_id);
                 if (event->open.exit_on_error) {
                     // Notify the error to the main thread, which will exit
                     sc_push_event(SC_EVENT_AOA_OPEN_ERROR);

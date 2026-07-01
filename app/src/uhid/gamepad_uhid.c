@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
-#include <SDL3/SDL_gamepad.h>
 
 #include "hid/hid_gamepad.h"
 #include "input_events.h"
@@ -47,7 +46,8 @@ sc_gamepad_uhid_send_open(struct sc_gamepad_uhid *gamepad,
     msg.uhid_create.report_desc_size = hid_open->report_desc_size;
 
     if (!sc_controller_push_msg(gamepad->controller, &msg)) {
-        LOGE("Could not push UHID_CREATE message (gamepad)");
+        LOGE("Could not queue UHID gamepad creation [%" PRIu16 "]",
+             hid_open->hid_id);
     }
 }
 
@@ -73,11 +73,6 @@ sc_gamepad_processor_process_gamepad_added(struct sc_gamepad_processor *gp,
                                       event->gamepad_id)) {
         return;
     }
-
-    SDL_Gamepad *sdl_gamepad = SDL_GetGamepadFromID(event->gamepad_id);
-    assert(sdl_gamepad);
-    const char *name = SDL_GetGamepadName(sdl_gamepad);
-    LOGI("Gamepad added: [%" PRIu32 "] %s", event->gamepad_id, name);
 
     sc_gamepad_uhid_send_open(gamepad, &hid_open);
 }

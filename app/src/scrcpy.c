@@ -298,6 +298,10 @@ init_sdl_gamepads(void) {
             event.gdevice.type = SDL_EVENT_GAMEPAD_ADDED;
             event.gdevice.which = joystick;
             SDL_PushEvent(&event);
+        } else {
+            const char *name = SDL_GetJoystickNameForID(joystick);
+            LOGW("Controller ignored: [%" PRIu32 "] %s is not recognized as "
+                 "an SDL gamepad", joystick, name ? name : "(unknown)");
         }
     }
 
@@ -467,6 +471,12 @@ scrcpy(struct scrcpy_options *options) {
     }
 
     if (options->gamepad_input_mode != SC_GAMEPAD_INPUT_MODE_DISABLED) {
+        const char *mode =
+            options->gamepad_input_mode == SC_GAMEPAD_INPUT_MODE_UHID
+                ? "UHID"
+                : "AOA";
+        LOGI("Gamepad mode: %s", mode);
+
         if (!SDL_Init(SDL_INIT_GAMEPAD)) {
             LOGE("Could not initialize SDL gamepad: %s", SDL_GetError());
             goto end;

@@ -1,6 +1,7 @@
 #include "input_manager.h"
 
 #include <assert.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <SDL3/SDL.h>
@@ -1046,21 +1047,29 @@ sc_input_manager_process_gamepad_device(struct sc_input_manager *im,
     }
 
     if (event->type == SDL_EVENT_GAMEPAD_ADDED) {
+        const char *name = SDL_GetGamepadNameForID(event->which);
         SDL_Gamepad *sdl_gamepad = SDL_OpenGamepad(event->which);
         if (!sdl_gamepad) {
-            LOGW("Could not open gamepad");
+            LOGW("Could not open gamepad [%" PRIu32 "] %s: %s",
+                 event->which, name ? name : "(unknown)", SDL_GetError());
             return;
         }
 
         SDL_Joystick *joystick = SDL_GetGamepadJoystick(sdl_gamepad);
         if (!joystick) {
-            LOGW("Could not get gamepad joystick");
+            LOGW("Could not get joystick for gamepad [%" PRIu32 "] %s: %s",
+                 event->which, name ? name : "(unknown)", SDL_GetError());
             SDL_CloseGamepad(sdl_gamepad);
             return;
         }
 
+        SDL_JoystickID id = SDL_GetJoystickID(joystick);
+        name = SDL_GetGamepadName(sdl_gamepad);
+        LOGI("Gamepad opened: [%" PRIu32 "] %s",
+             id, name ? name : "(unknown)");
+
         struct sc_gamepad_device_event evt = {
-            .gamepad_id = SDL_GetJoystickID(joystick),
+            .gamepad_id = id,
         };
         im->gp->ops->process_gamepad_added(im->gp, &evt);
     } else if (event->type == SDL_EVENT_GAMEPAD_REMOVED) {
@@ -1081,6 +1090,19 @@ sc_input_manager_process_gamepad_device(struct sc_input_manager *im,
         // Nothing to do
         return;
     }
+}
+
+static void
+sc_input_manager_process_joystick_added(struct sc_input_manager *im,
+                                        const SDL_JoyDeviceEvent *event) {
+    if (im->camera || !im->gp || im->disconnected
+            || SDL_IsGamepad(event->which)) {
+        return;
+    }
+
+    const char *name = SDL_GetJoystickNameForID(event->which);
+    LOGW("Controller ignored: [%" PRIu32 "] %s is not recognized as an SDL "
+         "gamepad", event->which, name ? name : "(unknown)");
 }
 
 static void
@@ -1194,6 +1216,9 @@ sc_input_manager_handle_event(struct sc_input_manager *im,
         case SDL_EVENT_GAMEPAD_ADDED:
         case SDL_EVENT_GAMEPAD_REMOVED:
             sc_input_manager_process_gamepad_device(im, &event->gdevice);
+            break;
+        case SDL_EVENT_JOYSTICK_ADDED:
+            sc_input_manager_process_joystick_added(im, &event->jdevice);
             break;
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
             sc_input_manager_process_gamepad_axis(im, &event->gaxis);
