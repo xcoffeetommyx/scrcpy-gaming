@@ -23,11 +23,15 @@ struct sc_controller {
     bool stopped;
 
     struct sc_control_msg_queue queue;
+    uint64_t queue_push_count;
+    uint64_t queue_pop_count;
 
     // Axis reports are coalesced per gamepad. Button reports stay in queue and
     // clear the corresponding pending axis report, since they contain the
-    // complete gamepad state.
+    // complete gamepad state. An axis may overtake only queue messages pushed
+    // after the recorded queue watermark.
     struct sc_control_msg pending_gamepad_axis[SC_MAX_GAMEPADS];
+    uint64_t pending_gamepad_axis_after[SC_MAX_GAMEPADS];
     uint8_t pending_gamepad_axis_mask;
     uint8_t next_pending_gamepad_axis;
 
