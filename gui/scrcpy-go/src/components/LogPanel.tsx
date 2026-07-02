@@ -19,10 +19,7 @@ export function LogPanel({ logs, onClear }: LogPanelProps) {
   return (
     <section className="log-panel">
       <header className="log-panel__header">
-        <div>
-          <span className="live-pulse" />
-          Activity
-        </div>
+        <div>Activity</div>
         <button type="button" onClick={onClear} disabled={logs.length === 0}>
           Clear
         </button>

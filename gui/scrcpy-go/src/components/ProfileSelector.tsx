@@ -14,12 +14,9 @@ export function ProfileSelector({
 }: ProfileSelectorProps) {
   return (
     <fieldset className="profile-fieldset" disabled={disabled}>
-      <legend className="section-heading">
-        <span>
-          <span className="section-index">02</span>
-          Choose your play style
-        </span>
-        <span className="section-note">You can change this next launch</span>
+      <legend className="section-title">
+        <span>Performance profile</span>
+        <small>All profiles target 120 FPS</small>
       </legend>
 
       <div className="profile-grid">
@@ -37,20 +34,12 @@ export function ProfileSelector({
                 checked={checked}
                 onChange={() => onChange(profile.id)}
               />
-              <span className="profile-card__check" aria-hidden="true">
-                <svg viewBox="0 0 20 20">
-                  <path d="m5 10 3 3 7-7" />
-                </svg>
+              <span className="profile-card__radio" aria-hidden="true">
+                <span />
               </span>
-              <span className="profile-card__eyebrow">{profile.eyebrow}</span>
-              <strong>{profile.name}</strong>
-              <span className="profile-card__description">
-                {profile.description}
-              </span>
-              <span className="spec-list">
-                {profile.specs.map((spec) => (
-                  <span key={spec}>{spec}</span>
-                ))}
+              <span className="profile-card__copy">
+                <strong>{profile.name}</strong>
+                <span>{profile.specs.slice(1).join(" · ")}</span>
               </span>
             </label>
           );

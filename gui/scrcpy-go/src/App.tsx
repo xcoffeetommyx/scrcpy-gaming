@@ -165,23 +165,23 @@ export default function App() {
 
   const launchDisabled =
     device.kind !== "connected" || running || busy || !device.serial;
+  const selectedProfile =
+    PROFILES.find((option) => option.id === profile)?.name ?? profile;
 
   return (
     <main className="app-shell">
-      <div className="ambient ambient--one" />
-      <div className="ambient ambient--two" />
-
       <header className="hero">
-        <div className="brand-mark" aria-hidden="true">
-          <span className="brand-mark__screen" />
-          <span className="brand-mark__signal brand-mark__signal--one" />
-          <span className="brand-mark__signal brand-mark__signal--two" />
-        </div>
-        <div className="hero__title">
-          <div className="hero__wordmark">
-            <h1>Scrcpy <em>GO</em></h1>
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true">
+            <span className="brand-mark__screen" />
+            <span className="brand-mark__signal" />
           </div>
-          <p>Gaming Optimized</p>
+          <div className="hero__title">
+            <h1>
+              Scrcpy <em>GO</em>
+            </h1>
+            <p>Gaming Optimized</p>
+          </div>
         </div>
         <div className={`session-pill ${running ? "is-running" : ""}`}>
           <span />
@@ -190,12 +190,9 @@ export default function App() {
       </header>
 
       <section className="workspace">
-        <div className="section-heading">
-          <span>
-            <span className="section-index">01</span>
-            Your device
-          </span>
-          <span className="section-note">USB debugging required</span>
+        <div className="section-title">
+          <h2>Device</h2>
+          <p>USB debugging required</p>
         </div>
 
         <DeviceStatusCard
@@ -210,51 +207,70 @@ export default function App() {
           onChange={setProfile}
         />
 
-        <div className="launch-zone">
-          <div className="controller-tip">
-            <div className="controller-icon" aria-hidden="true">
-              <span className="controller-dpad">+</span>
-              <span className="controller-buttons">••</span>
-            </div>
+        <section className="launch-zone" aria-label="Launch controls">
+          <div className="launch-summary">
+            <span>
+              {running
+                ? "Mirroring now"
+                : launchDisabled
+                  ? "Before you start"
+                  : "Ready to play"}
+            </span>
+            <strong>{selectedProfile} profile</strong>
             <p>
-              <strong>Controller setup</strong>
-              Connect your controller before launching. Game Mode uses Android
-              UHID controller forwarding.
+              {running
+                ? "Your game is running in a separate window."
+                : launchDisabled
+                  ? "Connect one authorized device to continue."
+                  : "Your device and controller setup are ready."}
             </p>
           </div>
 
           <div className="launch-actions">
-            <button
-              className="button button--stop"
-              type="button"
-              onClick={() => void stop()}
-              disabled={!running || busy}
-            >
-              <span className="stop-square" />
-              Stop
-            </button>
+            {running && (
+              <button
+                className="button button--stop"
+                type="button"
+                onClick={() => void stop()}
+                disabled={busy}
+              >
+                <span className="stop-square" />
+                Stop
+              </button>
+            )}
             <button
               className="button button--launch"
               type="button"
               onClick={() => void launch()}
               disabled={launchDisabled}
             >
-              <span>{busy ? "Working…" : running ? "Running" : "Launch game"}</span>
+              <span className="button__label">
+                {busy ? "Working…" : running ? "Running" : "GO"}
+              </span>
+              <span className="button__hint">
+                {running ? "Session active" : "Start mirroring"}
+              </span>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="m9 6 6 6-6 6" />
               </svg>
             </button>
           </div>
-        </div>
+        </section>
+
+        <aside className="controller-tip">
+          <div className="controller-icon" aria-hidden="true">
+            <span className="controller-dpad">+</span>
+            <span className="controller-buttons">••</span>
+          </div>
+          <p>
+            <strong>Using a controller?</strong>
+            Connect it before launching. Game Mode uses Android UHID
+            forwarding.
+          </p>
+        </aside>
 
         <LogPanel logs={logs} onClear={() => setLogs([])} />
       </section>
-
-      <footer>
-        <span>Direct USB mirroring</span>
-        <span className="footer-separator" />
-        <span>Powered by scrcpy-gaming</span>
-      </footer>
     </main>
   );
 }

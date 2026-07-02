@@ -24,22 +24,20 @@ export function DeviceStatusCard({
 
   return (
     <section className={`device-card state-${snapshot.kind}`} aria-live="polite">
-      <div className="device-card__glow" />
       <div className="device-card__content">
         <div className="device-card__icon" aria-hidden="true">
           <span className="phone-speaker" />
-          <span className="phone-screen">
-            <span className="phone-screen__spark" />
-          </span>
+          <span className="phone-screen" />
         </div>
 
         <div className="device-card__copy">
-          <div className="status-kicker">
-            <span className="status-dot" />
-            {STATUS_LABELS[snapshot.kind]}
-          </div>
           <h2>{deviceName || snapshot.title}</h2>
           <p>{snapshot.message}</p>
+        </div>
+
+        <div className="device-state">
+          <span className="status-dot" />
+          {STATUS_LABELS[snapshot.kind]}
         </div>
 
         <button
