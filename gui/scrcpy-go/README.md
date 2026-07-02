@@ -29,9 +29,11 @@ From `gui/scrcpy-go`:
 npm install
 ```
 
-## Stage the backend
+## Build and stage the backend
 
-Build the Win64 scrcpy distribution first, then run:
+Build the current Win64 scrcpy backend first. Confirm that
+`release/work/build-win64/dist` contains the newly built `scrcpy.exe`,
+`adb.exe`, and `scrcpy-server`, then stage it:
 
 ```powershell
 .\scripts\stage-backend.ps1
@@ -44,6 +46,8 @@ For a distribution in another location:
 ```
 
 Staged binaries are generated content and are ignored by Git.
+The staging script runs `scrcpy.exe --help` and rejects a backend that does not
+support `--game-mode-profile`.
 
 During development, the launcher resolves the backend in this order:
 
@@ -69,11 +73,15 @@ cargo check
 
 ## Build the Windows launcher
 
-Stage the backend, then run:
+Always build scrcpy first, stage that backend, and only then build the launcher:
 
 ```powershell
+.\scripts\stage-backend.ps1
 npm run tauri build
 ```
+
+The Tauri build runs the staging preflight again and stops before packaging if
+the distribution is missing or outdated.
 
 Tauri produces the configured NSIS installer under
 `src-tauri/target/release/bundle/nsis`.

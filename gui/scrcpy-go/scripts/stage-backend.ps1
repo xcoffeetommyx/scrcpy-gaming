@@ -17,6 +17,10 @@ $Destination = [IO.Path]::GetFullPath(
     (Join-Path $AppRoot "src-tauri\resources\backend")
 )
 
+if ($Source -ieq $Destination) {
+    throw "Backend source and staging destination must be different folders."
+}
+
 if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
     throw "Backend distribution not found: $Source"
 }
@@ -29,9 +33,45 @@ if ($missing) {
     throw "Backend distribution is incomplete. Missing: $($missing -join ', ')"
 }
 
+$scrcpy = Join-Path $Source "scrcpy.exe"
+$startInfo = [Diagnostics.ProcessStartInfo]::new()
+$startInfo.FileName = $scrcpy
+$startInfo.Arguments = "--help"
+$startInfo.WorkingDirectory = $Source
+$startInfo.UseShellExecute = $false
+$startInfo.CreateNoWindow = $true
+$startInfo.RedirectStandardOutput = $true
+$startInfo.RedirectStandardError = $true
+
+$process = [Diagnostics.Process]::new()
+$process.StartInfo = $startInfo
+try {
+    if (-not $process.Start()) {
+        throw "scrcpy.exe did not start."
+    }
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    $exitCode = $process.ExitCode
+    $help = $stdout.Result + $stderr.Result
+} catch {
+    throw "Could not validate '$scrcpy --help': $($_.Exception.Message)"
+} finally {
+    $process.Dispose()
+}
+
+if ($exitCode -ne 0) {
+    throw "Backend validation failed: scrcpy.exe --help exited with code $exitCode."
+}
+
+if ($help -notmatch [regex]::Escape("--game-mode-profile")) {
+    throw "Backend is outdated. Build the current scrcpy backend before staging. Missing --game-mode-profile."
+}
+
 New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 Get-ChildItem -LiteralPath $Destination -Force | Remove-Item -Recurse -Force
-Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
+Get-ChildItem -LiteralPath $Source -Force |
+    Copy-Item -Destination $Destination -Recurse -Force
 New-Item -ItemType File -Path (Join-Path $Destination ".gitkeep") -Force |
     Out-Null
 
