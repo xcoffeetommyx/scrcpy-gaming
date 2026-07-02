@@ -110,6 +110,14 @@ enum {
     OPT_BACKGROUND_COLOR,
     OPT_RENDER_FIT,
     OPT_GAME_MODE,
+    OPT_GAME_MODE_PROFILE,
+};
+
+enum sc_game_mode_profile {
+    SC_GAME_MODE_PROFILE_NONE,
+    SC_GAME_MODE_PROFILE_COMPETITIVE,
+    SC_GAME_MODE_PROFILE_BALANCED,
+    SC_GAME_MODE_PROFILE_QUALITY,
 };
 
 struct sc_option {
@@ -414,6 +422,16 @@ static const struct sc_option options[] = {
                 "overridden, this sets --gamepad=uhid, --video-codec=h264, "
                 "--video-buffer=0, --audio-buffer=0 (when audio is enabled), "
                 "--no-mipmaps and --no-key-repeat.",
+    },
+    {
+        .longopt_id = OPT_GAME_MODE_PROFILE,
+        .longopt = "game-mode-profile",
+        .argdesc = "profile",
+        .text = "Apply a game mode profile. Possible values are "
+                "\"competitive\" (120 FPS, max size 720, 2M, no audio), "
+                "\"balanced\" (120 FPS, max size 720, 6M, no audio) and "
+                "\"quality\" (120 FPS, max size 1080, 12M). Explicit options "
+                "override profile values. Implies --game-mode.",
     },
     {
         .shortopt = 'G',
@@ -2263,6 +2281,29 @@ parse_gamepad(const char *optarg, enum sc_gamepad_input_mode *mode) {
 }
 
 static bool
+parse_game_mode_profile(const char *optarg,
+                        enum sc_game_mode_profile *profile) {
+    if (!strcmp(optarg, "competitive")) {
+        *profile = SC_GAME_MODE_PROFILE_COMPETITIVE;
+        return true;
+    }
+
+    if (!strcmp(optarg, "balanced")) {
+        *profile = SC_GAME_MODE_PROFILE_BALANCED;
+        return true;
+    }
+
+    if (!strcmp(optarg, "quality")) {
+        *profile = SC_GAME_MODE_PROFILE_QUALITY;
+        return true;
+    }
+
+    LOGE("Unsupported game mode profile: %s (expected competitive, balanced "
+         "or quality)", optarg);
+    return false;
+}
+
+static bool
 parse_time_limit(const char *s, sc_tick *tick) {
     long value;
     bool ok = parse_integer_arg(s, &value, false, 0, 0x7FFFFFFF, "time limit");
@@ -2481,8 +2522,14 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
     struct scrcpy_options *opts = &args->opts;
 
     bool game_mode = false;
+    enum sc_game_mode_profile game_mode_profile =
+        SC_GAME_MODE_PROFILE_NONE;
     bool gamepad_explicit = false;
     bool video_codec_explicit = false;
+    bool video_bit_rate_explicit = false;
+    bool max_fps_explicit = false;
+    bool max_size_explicit = false;
+    bool audio_explicit = false;
     bool video_buffer_explicit = false;
     bool audio_buffer_explicit = false;
     bool mipmaps_explicit = false;
@@ -2497,6 +2544,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 if (!parse_bit_rate(optarg, &opts->video_bit_rate)) {
                     return false;
                 }
+                video_bit_rate_explicit = true;
                 break;
             case OPT_AUDIO_BIT_RATE:
                 if (!parse_bit_rate(optarg, &opts->audio_bit_rate)) {
@@ -2538,11 +2586,13 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 break;
             case OPT_MAX_FPS:
                 opts->max_fps = optarg;
+                max_fps_explicit = true;
                 break;
             case 'm':
                 if (!parse_max_size(optarg, &opts->max_size)) {
                     return false;
                 }
+                max_size_explicit = true;
                 break;
             case 'M':
                 opts->mouse_input_mode = SC_MOUSE_INPUT_MODE_UHID_OR_AOA;
@@ -2744,6 +2794,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 break;
             case OPT_NO_AUDIO:
                 opts->audio = false;
+                audio_explicit = true;
                 break;
             case OPT_NO_CLEANUP:
                 opts->cleanup = false;
@@ -2893,6 +2944,12 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
             case OPT_GAME_MODE:
                 game_mode = true;
                 break;
+            case OPT_GAME_MODE_PROFILE:
+                if (!parse_game_mode_profile(optarg, &game_mode_profile)) {
+                    return false;
+                }
+                game_mode = true;
+                break;
             case OPT_NEW_DISPLAY:
                 opts->new_display = optarg ? optarg : "";
                 break;
@@ -2955,6 +3012,36 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
     if (index < argc) {
         LOGE("Unexpected additional argument: %s", argv[index]);
         return false;
+    }
+
+    if (game_mode_profile != SC_GAME_MODE_PROFILE_NONE) {
+        if (!max_fps_explicit) {
+            opts->max_fps = "120";
+        }
+        if (!max_size_explicit) {
+            opts->max_size =
+                game_mode_profile == SC_GAME_MODE_PROFILE_QUALITY ? 1080 : 720;
+        }
+        if (!video_bit_rate_explicit) {
+            switch (game_mode_profile) {
+                case SC_GAME_MODE_PROFILE_COMPETITIVE:
+                    opts->video_bit_rate = 2000000;
+                    break;
+                case SC_GAME_MODE_PROFILE_BALANCED:
+                    opts->video_bit_rate = 6000000;
+                    break;
+                case SC_GAME_MODE_PROFILE_QUALITY:
+                    opts->video_bit_rate = 12000000;
+                    break;
+                default:
+                    assert(false);
+                    break;
+            }
+        }
+        if (!audio_explicit) {
+            opts->audio =
+                game_mode_profile == SC_GAME_MODE_PROFILE_QUALITY;
+        }
     }
 
     if (game_mode) {

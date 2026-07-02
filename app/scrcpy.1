@@ -221,6 +221,16 @@ Do not attempt to use "adb reverse" to connect to the device.
 Enable a low-latency gaming preset. Unless explicitly overridden, this sets \fB\-\-gamepad=uhid\fR, \fB\-\-video\-codec=h264\fR, \fB\-\-video\-buffer=0\fR, \fB\-\-audio\-buffer=0\fR (when audio is enabled), \fB\-\-no\-mipmaps\fR and \fB\-\-no\-key\-repeat\fR.
 
 .TP
+.BI "\-\-game\-mode\-profile " profile
+Apply a game mode profile. Possible values are:
+
+ - "competitive": 120 FPS, max size 720, 2M video bit rate and no audio.
+ - "balanced": 120 FPS, max size 720, 6M video bit rate and no audio.
+ - "quality": 120 FPS, max size 1080 and 12M video bit rate. Audio remains enabled unless explicitly disabled.
+
+Explicit options override profile values. Implies \fB\-\-game\-mode\fR.
+
+.TP
 .B \-G
 Same as \fB\-\-gamepad=uhid\fR, or \fB\-\-keyboard=aoa\fR if \fB\-\-otg\fR is set.
 
