@@ -321,6 +321,10 @@ public class SurfaceEncoder implements AsyncProcessor {
             format.setInteger(MediaFormat.KEY_LATENCY, 1);
         }
         if (maxFps > 0) {
+            if (Build.VERSION.SDK_INT >= AndroidVersions.API_23_ANDROID_6_0) {
+                // Let the codec plan resources for the requested capture rate.
+                format.setFloat(MediaFormat.KEY_OPERATING_RATE, maxFps);
+            }
             // The key existed privately before Android 10:
             // <https://android.googlesource.com/platform/frameworks/base/+/625f0aad9f7a259b6881006ad8710adce57d1384%5E%21/>
             // <https://github.com/Genymobile/scrcpy/issues/488#issuecomment-567321437>
