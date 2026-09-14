@@ -8,8 +8,8 @@ import {
 interface DeviceStatusCardProps {
   snapshot: DeviceSnapshot;
   selectedSerial: string | null;
+  activeSessions: ReadonlyMap<string, number>;
   refreshing: boolean;
-  selectionDisabled: boolean;
   onSelect: (serial: string) => void;
   onRefresh: () => void;
 }
@@ -25,8 +25,8 @@ const STATUS_LABELS: Record<DeviceSnapshot["kind"], string> = {
 export function DeviceStatusCard({
   snapshot,
   selectedSerial,
+  activeSessions,
   refreshing,
-  selectionDisabled,
   onSelect,
   onRefresh,
 }: DeviceStatusCardProps) {
@@ -60,7 +60,7 @@ export function DeviceStatusCard({
               <select
                 value={selectedSerial ?? ""}
                 onChange={(event) => onSelect(event.target.value)}
-                disabled={selectionDisabled || snapshot.readyCount === 0}
+                disabled={snapshot.readyCount === 0}
                 aria-label="Device to mirror"
               >
                 {!selectedSerial && (
@@ -75,6 +75,7 @@ export function DeviceStatusCard({
                     disabled={!isReadyDevice(device)}
                   >
                     {formatDeviceOption(device)}
+                    {activeSessions.has(device.serial) ? " • Active" : ""}
                   </option>
                 ))}
               </select>

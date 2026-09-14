@@ -29,14 +29,18 @@ export interface LaunchRequest {
 
 export interface LaunchResult {
   pid: number;
+  serial: string;
 }
 
 export interface LogEvent {
   source: "scrcpy" | "system";
+  serial?: string | null;
   message: string;
 }
 
 export interface ProcessStateEvent {
+  serial: string;
+  pid: number;
   running: boolean;
   exitCode: number | null;
 }

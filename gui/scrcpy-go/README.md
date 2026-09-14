@@ -7,6 +7,9 @@ Android devices through the bundled ADB, lets you choose between connected
 devices, applies a game mode profile, and runs the existing packaged scrcpy
 client. It does not replace or embed scrcpy's video and input engine.
 
+Each device has an independent mirroring session. You may switch the device
+selector and launch or stop another device without closing existing sessions.
+
 ## Prerequisites
 
 - Windows 10 or Windows 11

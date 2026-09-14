@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -35,19 +36,25 @@ pub struct LaunchRequest {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LaunchResult {
     pid: u32,
+    serial: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LogEvent {
     source: &'static str,
+    serial: String,
     message: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessStateEvent {
+    serial: String,
+    pid: u32,
     running: bool,
     exit_code: Option<i32>,
 }
@@ -55,39 +62,60 @@ pub struct ProcessStateEvent {
 #[derive(Clone)]
 struct RunningProcess {
     pid: u32,
+    serial: String,
     child: Arc<Mutex<Child>>,
 }
 
 #[derive(Default)]
 pub struct LauncherState {
-    running: Mutex<Option<RunningProcess>>,
+    running: Mutex<HashMap<String, RunningProcess>>,
 }
 
 impl LauncherState {
-    pub fn stop(&self) -> Result<(), String> {
-        let running = self
-            .running
-            .lock()
-            .map_err(|_| "Process state is unavailable.")?;
-        let Some(process) = running.as_ref() else {
-            return Err("No mirroring session is running.".to_owned());
+    pub fn stop(&self, serial: &str) -> Result<(), String> {
+        let child = {
+            let running = self
+                .running
+                .lock()
+                .map_err(|_| "Process state is unavailable.")?;
+            let Some(process) = running.get(serial) else {
+                return Err("No mirroring session is running for this device.".to_owned());
+            };
+            Arc::clone(&process.child)
         };
 
-        let result = process
-            .child
+        let result = child
             .lock()
             .map_err(|_| "Mirroring process is unavailable.")?
             .kill()
             .map_err(|_| "Could not stop the mirroring session.".to_owned());
         result
     }
+
+    pub fn stop_all(&self) {
+        let processes = match self.running.lock() {
+            Ok(running) => running.values().cloned().collect::<Vec<_>>(),
+            Err(_) => return,
+        };
+
+        for process in processes {
+            if let Ok(mut child) = process.child.lock() {
+                let _ = child.kill();
+            }
+        }
+    }
 }
 
-fn build_arguments(request: &LaunchRequest) -> Result<Vec<String>, String> {
-    let serial = request.serial.trim();
+fn normalize_serial(serial: &str) -> Result<&str, String> {
+    let serial = serial.trim();
     if serial.is_empty() || serial.len() > 256 || serial.chars().any(char::is_control) {
         return Err("The selected device identifier is invalid.".to_owned());
     }
+    Ok(serial)
+}
+
+fn build_arguments(request: &LaunchRequest) -> Result<Vec<String>, String> {
+    let serial = normalize_serial(&request.serial)?;
 
     Ok(vec![
         format!("--serial={serial}"),
@@ -104,7 +132,7 @@ fn hide_console(command: &mut Command) {
 #[cfg(not(windows))]
 fn hide_console(_command: &mut Command) {}
 
-fn stream_logs<R>(app: AppHandle, source: &'static str, reader: R)
+fn stream_logs<R>(app: AppHandle, serial: String, source: &'static str, reader: R)
 where
     R: Read + Send + 'static,
 {
@@ -116,6 +144,7 @@ where
                     "scrcpy-log",
                     LogEvent {
                         source,
+                        serial: serial.clone(),
                         message: trimmed.to_owned(),
                     },
                 );
@@ -137,22 +166,32 @@ fn monitor_process(app: AppHandle, process: RunningProcess) {
         };
 
         if let Some(status) = status {
+            let serial = process.serial.clone();
             let state = app.state::<LauncherState>();
-            if let Ok(mut running) = state.running.lock() {
+            let removed = if let Ok(mut running) = state.running.lock() {
                 if running
-                    .as_ref()
+                    .get(&serial)
                     .is_some_and(|active| active.pid == process.pid)
                 {
-                    *running = None;
+                    running.remove(&serial);
+                    true
+                } else {
+                    false
                 }
+            } else {
+                false
+            };
+            if removed {
+                let _ = app.emit(
+                    "scrcpy-process-state",
+                    ProcessStateEvent {
+                        serial,
+                        pid: process.pid,
+                        running: false,
+                        exit_code: status.code(),
+                    },
+                );
             }
-            let _ = app.emit(
-                "scrcpy-process-state",
-                ProcessStateEvent {
-                    running: false,
-                    exit_code: status.code(),
-                },
-            );
             return;
         }
     });
@@ -165,13 +204,14 @@ pub fn launch_scrcpy(
     request: LaunchRequest,
 ) -> Result<LaunchResult, String> {
     let arguments = build_arguments(&request)?;
+    let serial = normalize_serial(&request.serial)?.to_owned();
     let backend = resolve_backend(&app)?;
 
     let mut running = state
         .running
         .lock()
         .map_err(|_| "Process state is unavailable.")?;
-    if let Some(active) = running.as_ref() {
+    if let Some(active) = running.get(&serial) {
         let still_running = active
             .child
             .lock()
@@ -180,9 +220,9 @@ pub fn launch_scrcpy(
             .map_err(|_| "Could not inspect the mirroring process.")?
             .is_none();
         if still_running {
-            return Err("A mirroring session is already running.".to_owned());
+            return Err("A mirroring session is already running for this device.".to_owned());
         }
-        *running = None;
+        running.remove(&serial);
     }
 
     let mut command = Command::new(&backend.scrcpy);
@@ -204,25 +244,27 @@ pub fn launch_scrcpy(
     let stderr = child.stderr.take();
     let process = RunningProcess {
         pid,
+        serial: serial.clone(),
         child: Arc::new(Mutex::new(child)),
     };
-    *running = Some(process.clone());
+    running.insert(serial.clone(), process.clone());
     drop(running);
 
     if let Some(stdout) = stdout {
-        stream_logs(app.clone(), "scrcpy", stdout);
+        stream_logs(app.clone(), serial.clone(), "scrcpy", stdout);
     }
     if let Some(stderr) = stderr {
-        stream_logs(app.clone(), "scrcpy", stderr);
+        stream_logs(app.clone(), serial.clone(), "scrcpy", stderr);
     }
     monitor_process(app, process);
 
-    Ok(LaunchResult { pid })
+    Ok(LaunchResult { pid, serial })
 }
 
 #[tauri::command]
-pub fn stop_scrcpy(state: tauri::State<'_, LauncherState>) -> Result<(), String> {
-    state.stop()
+pub fn stop_scrcpy(state: tauri::State<'_, LauncherState>, serial: String) -> Result<(), String> {
+    let serial = normalize_serial(&serial)?;
+    state.stop(serial)
 }
 
 #[cfg(test)]
@@ -257,5 +299,15 @@ mod tests {
             profile: Profile::Balanced,
         };
         assert!(build_arguments(&request).is_err());
+    }
+
+    #[test]
+    fn normalizes_device_serials() {
+        let request = LaunchRequest {
+            serial: "  device-123  ".to_owned(),
+            profile: Profile::Balanced,
+        };
+        assert_eq!(build_arguments(&request).unwrap()[0], "--serial=device-123");
+        assert_eq!(normalize_serial(&request.serial).unwrap(), "device-123");
     }
 }

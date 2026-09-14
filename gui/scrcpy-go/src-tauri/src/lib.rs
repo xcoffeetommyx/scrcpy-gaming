@@ -19,7 +19,7 @@ pub fn run() {
     app.run(|app_handle, event| {
         if matches!(event, tauri::RunEvent::Exit) {
             let state = app_handle.state::<LauncherState>();
-            let _ = state.stop();
+            state.stop_all();
         }
     });
 }

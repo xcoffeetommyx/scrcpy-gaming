@@ -34,7 +34,12 @@ export function LogPanel({ logs, onClear }: LogPanelProps) {
               key={`${index}-${entry.message}`}
             >
               <span>{entry.source === "system" ? "GO" : "SC"}</span>
-              <p>{entry.message}</p>
+              <p>
+                {entry.serial && (
+                  <small className="log-line__device">{entry.serial}</small>
+                )}
+                {entry.message}
+              </p>
             </div>
           ))
         )}
