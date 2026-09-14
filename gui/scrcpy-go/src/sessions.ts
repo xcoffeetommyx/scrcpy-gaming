@@ -1,4 +1,8 @@
-import type { ProcessStateEvent, Profile } from "./types";
+import type {
+  PerformanceEvent,
+  ProcessStateEvent,
+  Profile,
+} from "./types";
 
 export function applyProcessState(
   current: ReadonlyMap<string, number>,
@@ -34,5 +38,26 @@ export function setDeviceProfile(
 ): Map<string, Profile> {
   const next = new Map(current);
   next.set(serial, profile);
+  return next;
+}
+
+export function applyPerformanceSample(
+  current: ReadonlyMap<string, PerformanceEvent>,
+  sample: PerformanceEvent,
+): Map<string, PerformanceEvent> {
+  const next = new Map(current);
+  next.set(sample.serial, sample);
+  return next;
+}
+
+export function clearPerformanceSample(
+  current: ReadonlyMap<string, PerformanceEvent>,
+  event: ProcessStateEvent,
+): Map<string, PerformanceEvent> {
+  const next = new Map(current);
+  const sample = next.get(event.serial);
+  if (!event.running && sample?.pid === event.pid) {
+    next.delete(event.serial);
+  }
   return next;
 }

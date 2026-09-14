@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyPerformanceSample,
   applyProcessState,
+  clearPerformanceSample,
   setDeviceProfile,
   setSerialMembership,
 } from "./sessions";
@@ -67,5 +69,53 @@ describe("multi-device session state", () => {
 
     expect(profiles.get("phone")).toBe("quality");
     expect(profiles.get("emulator-5554")).toBe("competitive");
+  });
+
+  it("tracks performance samples independently per session", () => {
+    let samples = applyPerformanceSample(new Map(), {
+      serial: "phone",
+      pid: 10,
+      renderedFps: 120,
+      skippedFrames: 0,
+    });
+    samples = applyPerformanceSample(samples, {
+      serial: "emulator-5554",
+      pid: 20,
+      renderedFps: 60,
+      skippedFrames: 2,
+    });
+
+    expect(samples.get("phone")?.renderedFps).toBe(120);
+    expect(samples.get("emulator-5554")?.skippedFrames).toBe(2);
+  });
+
+  it("does not clear telemetry for a replacement session", () => {
+    const samples = new Map([
+      [
+        "phone",
+        {
+          serial: "phone",
+          pid: 11,
+          renderedFps: 90,
+          skippedFrames: 0,
+        },
+      ],
+    ]);
+
+    const afterLateExit = clearPerformanceSample(samples, {
+      serial: "phone",
+      pid: 10,
+      running: false,
+      exitCode: 1,
+    });
+    expect(afterLateExit.has("phone")).toBe(true);
+
+    const afterCurrentExit = clearPerformanceSample(afterLateExit, {
+      serial: "phone",
+      pid: 11,
+      running: false,
+      exitCode: 0,
+    });
+    expect(afterCurrentExit.has("phone")).toBe(false);
   });
 });

@@ -59,6 +59,15 @@ pub struct ProcessStateEvent {
     exit_code: Option<i32>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerformanceEvent {
+    serial: String,
+    pid: u32,
+    rendered_fps: u32,
+    skipped_frames: u32,
+}
+
 #[derive(Clone)]
 struct RunningProcess {
     pid: u32,
@@ -120,6 +129,7 @@ fn build_arguments(request: &LaunchRequest) -> Result<Vec<String>, String> {
     Ok(vec![
         format!("--serial={serial}"),
         format!("--game-mode-profile={}", request.profile.as_str()),
+        "--print-fps".to_owned(),
     ])
 }
 
@@ -132,7 +142,31 @@ fn hide_console(command: &mut Command) {
 #[cfg(not(windows))]
 fn hide_console(_command: &mut Command) {}
 
-fn stream_logs<R>(app: AppHandle, serial: String, source: &'static str, reader: R)
+fn parse_fps_line(line: &str) -> Option<(u32, u32)> {
+    let fps_suffix = " fps";
+    let fps_index = line.rfind(fps_suffix)?;
+    let fps_prefix = &line[..fps_index];
+    let fps_text = fps_prefix
+        .rsplit(|character: char| !character.is_ascii_digit())
+        .next()?;
+    if fps_text.is_empty() {
+        return None;
+    }
+    let rendered_fps = fps_text.parse().ok()?;
+
+    let remainder = line[fps_index + fps_suffix.len()..].trim();
+    if remainder.is_empty() {
+        return Some((rendered_fps, 0));
+    }
+
+    let skipped_text = remainder
+        .strip_prefix("(+")?
+        .strip_suffix(" frames skipped)")?;
+    let skipped_frames = skipped_text.parse().ok()?;
+    Some((rendered_fps, skipped_frames))
+}
+
+fn stream_logs<R>(app: AppHandle, serial: String, pid: u32, source: &'static str, reader: R)
 where
     R: Read + Send + 'static,
 {
@@ -140,6 +174,18 @@ where
         for line in BufReader::new(reader).lines().map_while(Result::ok) {
             let trimmed = line.trim();
             if !trimmed.is_empty() {
+                if let Some((rendered_fps, skipped_frames)) = parse_fps_line(trimmed) {
+                    let _ = app.emit(
+                        "scrcpy-performance",
+                        PerformanceEvent {
+                            serial: serial.clone(),
+                            pid,
+                            rendered_fps,
+                            skipped_frames,
+                        },
+                    );
+                    continue;
+                }
                 let _ = app.emit(
                     "scrcpy-log",
                     LogEvent {
@@ -251,10 +297,10 @@ pub fn launch_scrcpy(
     drop(running);
 
     if let Some(stdout) = stdout {
-        stream_logs(app.clone(), serial.clone(), "scrcpy", stdout);
+        stream_logs(app.clone(), serial.clone(), pid, "scrcpy", stdout);
     }
     if let Some(stderr) = stderr {
-        stream_logs(app.clone(), serial.clone(), "scrcpy", stderr);
+        stream_logs(app.clone(), serial.clone(), pid, "scrcpy", stderr);
     }
     monitor_process(app, process);
 
@@ -286,7 +332,8 @@ mod tests {
                 build_arguments(&request).unwrap(),
                 vec![
                     "--serial=device-123",
-                    &format!("--game-mode-profile={expected}")
+                    &format!("--game-mode-profile={expected}"),
+                    "--print-fps",
                 ]
             );
         }
@@ -309,5 +356,16 @@ mod tests {
         };
         assert_eq!(build_arguments(&request).unwrap()[0], "--serial=device-123");
         assert_eq!(normalize_serial(&request.serial).unwrap(), "device-123");
+    }
+
+    #[test]
+    fn parses_fps_samples() {
+        assert_eq!(parse_fps_line("INFO: 120 fps"), Some((120, 0)));
+        assert_eq!(
+            parse_fps_line("INFO: 117 fps (+3 frames skipped)"),
+            Some((117, 3))
+        );
+        assert_eq!(parse_fps_line("INFO: FPS counter started"), None);
+        assert_eq!(parse_fps_line("INFO: 60 fps (invalid)"), None);
     }
 }

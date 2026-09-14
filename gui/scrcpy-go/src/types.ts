@@ -44,3 +44,10 @@ export interface ProcessStateEvent {
   running: boolean;
   exitCode: number | null;
 }
+
+export interface PerformanceEvent {
+  serial: string;
+  pid: number;
+  renderedFps: number;
+  skippedFrames: number;
+}

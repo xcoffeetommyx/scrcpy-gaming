@@ -10,6 +10,13 @@ client. It does not replace or embed scrcpy's video and input engine.
 Each device has an independent mirroring session. You may switch the device
 selector and launch or stop another device without closing existing sessions.
 
+Launcher sessions enable scrcpy's FPS counter and show a live per-device
+rendered FPS and skipped-frame sample. Counter lines are kept out of the
+activity log so that useful startup and controller diagnostics are not pushed
+out by one-second telemetry. These figures measure frame delivery and pacing;
+they are not presented as end-to-end latency because the Android capture clock
+is not synchronized with the host clock.
+
 ## Prerequisites
 
 - Windows 10 or Windows 11

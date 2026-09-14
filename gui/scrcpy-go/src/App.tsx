@@ -11,7 +11,9 @@ import {
 } from "./devices";
 import { PROFILES } from "./profiles";
 import {
+  applyPerformanceSample,
   applyProcessState,
+  clearPerformanceSample,
   setDeviceProfile,
   setSerialMembership,
 } from "./sessions";
@@ -20,6 +22,7 @@ import type {
   LaunchRequest,
   LaunchResult,
   LogEvent,
+  PerformanceEvent,
   ProcessStateEvent,
   Profile,
 } from "./types";
@@ -62,6 +65,9 @@ export default function App() {
   const [sessions, setSessions] = useState<Map<string, number>>(
     () => new Map(),
   );
+  const [performance, setPerformance] = useState<
+    Map<string, PerformanceEvent>
+  >(() => new Map());
   const [busySerials, setBusySerials] = useState<Set<string>>(
     () => new Set(),
   );
@@ -123,6 +129,9 @@ export default function App() {
       listen<LogEvent>("scrcpy-log", ({ payload }) => addLog(payload)),
       listen<ProcessStateEvent>("scrcpy-process-state", ({ payload }) => {
         setSessions((current) => applyProcessState(current, payload));
+        setPerformance((current) =>
+          clearPerformanceSample(current, payload),
+        );
         setBusySerials((current) =>
           setSerialMembership(current, payload.serial, false),
         );
@@ -136,6 +145,11 @@ export default function App() {
                 : `Mirroring ended (exit ${payload.exitCode}).`,
           });
         }
+      }),
+      listen<PerformanceEvent>("scrcpy-performance", ({ payload }) => {
+        setPerformance((current) =>
+          applyPerformanceSample(current, payload),
+        );
       }),
     ];
 
@@ -164,6 +178,13 @@ export default function App() {
     ? profiles.get(selectedSerial) ?? "balanced"
     : "balanced";
   const activeSessionCount = sessions.size;
+  const selectedPerformance = selectedSerial
+    ? performance.get(selectedSerial)
+    : undefined;
+  const currentPerformance =
+    selectedPerformance?.pid === sessions.get(selectedSerial ?? "")
+      ? selectedPerformance
+      : undefined;
 
   const selectProfile = (nextProfile: Profile) => {
     if (!selectedSerial) {
@@ -197,6 +218,11 @@ export default function App() {
 
     try {
       const result = await invoke<LaunchResult>("launch_scrcpy", { request });
+      setPerformance((current) => {
+        const next = new Map(current);
+        next.delete(serial);
+        return next;
+      });
       setSessions((current) =>
         applyProcessState(current, {
           serial: result.serial,
@@ -302,7 +328,15 @@ export default function App() {
             <strong>{selectedProfile} profile</strong>
             <p>
               {selectedRunning
-                ? "Your game is running in a separate window."
+                ? currentPerformance
+                  ? `${currentPerformance.renderedFps} FPS live · ${
+                      currentPerformance.skippedFrames === 0
+                        ? "no skipped frames"
+                        : `${currentPerformance.skippedFrames} skipped frame${
+                            currentPerformance.skippedFrames === 1 ? "" : "s"
+                          }`
+                    } in the last second`
+                  : "Measuring frame delivery…"
                 : launchDisabled
                   ? "Select an authorized device to continue."
                   : "Your device and controller setup are ready."}
