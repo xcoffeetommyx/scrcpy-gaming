@@ -3,9 +3,9 @@
 **Gaming Optimized**
 
 Scrcpy GO is the Windows-first launcher for `scrcpy-gaming`. It discovers
-Android devices through the bundled ADB, applies a game mode profile, and runs
-the existing packaged scrcpy client. It does not replace or embed scrcpy's
-video and input engine.
+Android devices through the bundled ADB, lets you choose between connected
+devices, applies a game mode profile, and runs the existing packaged scrcpy
+client. It does not replace or embed scrcpy's video and input engine.
 
 ## Prerequisites
 

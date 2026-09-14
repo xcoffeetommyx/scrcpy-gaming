@@ -4,6 +4,11 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { DeviceStatusCard } from "./components/DeviceStatusCard";
 import { LogPanel } from "./components/LogPanel";
 import { ProfileSelector } from "./components/ProfileSelector";
+import {
+  chooseDeviceSerial,
+  formatDeviceName,
+  isReadyDevice,
+} from "./devices";
 import { PROFILES } from "./profiles";
 import type {
   DeviceSnapshot,
@@ -20,9 +25,9 @@ const INITIAL_DEVICE: DeviceSnapshot = {
   kind: "noDevice",
   title: "Looking for your Android device",
   message: "Connect your phone with USB debugging enabled.",
-  serial: null,
-  model: null,
   count: 0,
+  readyCount: 0,
+  devices: [],
 };
 
 function appendBounded(
@@ -44,6 +49,7 @@ function friendlyError(error: unknown): string {
 
 export default function App() {
   const [device, setDevice] = useState<DeviceSnapshot>(INITIAL_DEVICE);
+  const [selectedSerial, setSelectedSerial] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>("balanced");
   const [running, setRunning] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,6 +79,9 @@ export default function App() {
       const snapshot = await invoke<DeviceSnapshot>("get_device_status");
       if (mounted.current) {
         setDevice(snapshot);
+        setSelectedSerial((current) =>
+          chooseDeviceSerial(snapshot.devices, current),
+        );
       }
     } catch (error) {
       if (mounted.current) {
@@ -80,10 +89,11 @@ export default function App() {
           kind: "adbError",
           title: "Backend unavailable",
           message: friendlyError(error),
-          serial: null,
-          model: null,
           count: 0,
+          readyCount: 0,
+          devices: [],
         });
+        setSelectedSerial(null);
       }
     } finally {
       pollInFlight.current = false;
@@ -123,14 +133,21 @@ export default function App() {
     };
   }, [addLog, refreshDevices]);
 
+  const selectedDevice = device.devices.find(
+    (candidate) => candidate.serial === selectedSerial,
+  );
+  const selectedDeviceReady = selectedDevice
+    ? isReadyDevice(selectedDevice)
+    : false;
+
   const launch = async () => {
-    if (!device.serial || device.kind !== "connected" || running || busy) {
+    if (!selectedSerial || !selectedDeviceReady || running || busy) {
       return;
     }
 
     setBusy(true);
     const request: LaunchRequest = {
-      serial: device.serial,
+      serial: selectedSerial,
       profile,
     };
 
@@ -139,7 +156,9 @@ export default function App() {
       setRunning(true);
       addLog({
         source: "system",
-        message: `Mirroring started in ${
+        message: `Mirroring ${
+          selectedDevice ? formatDeviceName(selectedDevice) : selectedSerial
+        } in ${
           PROFILES.find((option) => option.id === profile)?.name ?? profile
         } mode.`,
       });
@@ -164,7 +183,7 @@ export default function App() {
   };
 
   const launchDisabled =
-    device.kind !== "connected" || running || busy || !device.serial;
+    !selectedDeviceReady || running || busy || !selectedSerial;
   const selectedProfile =
     PROFILES.find((option) => option.id === profile)?.name ?? profile;
 
@@ -197,7 +216,10 @@ export default function App() {
 
         <DeviceStatusCard
           snapshot={device}
+          selectedSerial={selectedSerial}
           refreshing={refreshing}
+          selectionDisabled={running || busy}
+          onSelect={setSelectedSerial}
           onRefresh={() => void refreshDevices()}
         />
 
@@ -221,7 +243,7 @@ export default function App() {
               {running
                 ? "Your game is running in a separate window."
                 : launchDisabled
-                  ? "Connect one authorized device to continue."
+                  ? "Select an authorized device to continue."
                   : "Your device and controller setup are ready."}
             </p>
           </div>

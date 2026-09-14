@@ -4,17 +4,22 @@ export type DeviceState =
   | "noDevice"
   | "connected"
   | "unauthorized"
-  | "multipleDevices"
   | "unavailable"
   | "adbError";
+
+export interface AdbDevice {
+  serial: string;
+  state: string;
+  model: string | null;
+}
 
 export interface DeviceSnapshot {
   kind: DeviceState;
   title: string;
   message: string;
-  serial: string | null;
-  model: string | null;
   count: number;
+  readyCount: number;
+  devices: AdbDevice[];
 }
 
 export interface LaunchRequest {

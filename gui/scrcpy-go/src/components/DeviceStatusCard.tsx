@@ -1,8 +1,16 @@
 import type { DeviceSnapshot } from "../types";
+import {
+  formatDeviceName,
+  formatDeviceOption,
+  isReadyDevice,
+} from "../devices";
 
 interface DeviceStatusCardProps {
   snapshot: DeviceSnapshot;
+  selectedSerial: string | null;
   refreshing: boolean;
+  selectionDisabled: boolean;
+  onSelect: (serial: string) => void;
   onRefresh: () => void;
 }
 
@@ -10,17 +18,30 @@ const STATUS_LABELS: Record<DeviceSnapshot["kind"], string> = {
   noDevice: "Waiting",
   connected: "Ready",
   unauthorized: "Action needed",
-  multipleDevices: "Choose one",
   unavailable: "Unavailable",
   adbError: "Backend error",
 };
 
 export function DeviceStatusCard({
   snapshot,
+  selectedSerial,
   refreshing,
+  selectionDisabled,
+  onSelect,
   onRefresh,
 }: DeviceStatusCardProps) {
-  const deviceName = snapshot.model?.replaceAll("_", " ");
+  const selectedDevice = snapshot.devices.find(
+    (device) => device.serial === selectedSerial,
+  );
+  const displayDevice =
+    selectedDevice ??
+    (snapshot.devices.length === 1 ? snapshot.devices[0] : undefined);
+  const deviceName = displayDevice && formatDeviceName(displayDevice);
+  const showPicker = snapshot.devices.length > 1;
+  const statusLabel =
+    snapshot.kind === "connected" && snapshot.readyCount > 1
+      ? `${snapshot.readyCount} ready`
+      : STATUS_LABELS[snapshot.kind];
 
   return (
     <section className={`device-card state-${snapshot.kind}`} aria-live="polite">
@@ -33,11 +54,37 @@ export function DeviceStatusCard({
         <div className="device-card__copy">
           <h2>{deviceName || snapshot.title}</h2>
           <p>{snapshot.message}</p>
+          {showPicker && (
+            <label className="device-picker">
+              <span>Mirror device</span>
+              <select
+                value={selectedSerial ?? ""}
+                onChange={(event) => onSelect(event.target.value)}
+                disabled={selectionDisabled || snapshot.readyCount === 0}
+                aria-label="Device to mirror"
+              >
+                {!selectedSerial && (
+                  <option value="" disabled>
+                    Select a ready device
+                  </option>
+                )}
+                {snapshot.devices.map((device) => (
+                  <option
+                    key={device.serial}
+                    value={device.serial}
+                    disabled={!isReadyDevice(device)}
+                  >
+                    {formatDeviceOption(device)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
 
         <div className="device-state">
           <span className="status-dot" />
-          {STATUS_LABELS[snapshot.kind]}
+          {statusLabel}
         </div>
 
         <button

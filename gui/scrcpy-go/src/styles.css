@@ -46,7 +46,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -298,6 +299,51 @@ button {
   white-space: nowrap;
 }
 
+.device-picker {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.device-picker > span {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
+}
+
+.device-picker select {
+  width: min(100%, 460px);
+  min-width: 0;
+  height: 32px;
+  padding: 0 32px 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: #101318;
+  cursor: pointer;
+}
+
+.device-picker select:hover:not(:disabled) {
+  border-color: rgba(111, 146, 255, 0.48);
+}
+
+.device-picker select:focus-visible {
+  border-color: var(--blue);
+  outline: 2px solid rgba(77, 127, 255, 0.24);
+  outline-offset: 1px;
+}
+
+.device-picker select:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .device-state {
   display: inline-flex;
   min-height: 28px;
@@ -336,14 +382,12 @@ button {
   background: var(--green);
 }
 
-.state-unauthorized .device-state,
-.state-multipleDevices .device-state {
+.state-unauthorized .device-state {
   color: #f0c58f;
   background: rgba(233, 173, 97, 0.09);
 }
 
-.state-unauthorized .status-dot,
-.state-multipleDevices .status-dot {
+.state-unauthorized .status-dot {
   background: var(--amber);
 }
 

@@ -23,7 +23,8 @@ const KNOWN_STATES: [&str; 11] = [
     "detached",
 ];
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdbDevice {
     pub serial: String,
     pub state: String,
@@ -36,9 +37,9 @@ pub struct DeviceSnapshot {
     pub kind: &'static str,
     pub title: String,
     pub message: String,
-    pub serial: Option<String>,
-    pub model: Option<String>,
     pub count: usize,
+    pub ready_count: usize,
+    pub devices: Vec<AdbDevice>,
 }
 
 fn is_known_state(token: &str) -> bool {
@@ -88,52 +89,66 @@ pub fn parse_adb_devices(output: &str) -> Vec<AdbDevice> {
 }
 
 pub fn classify_devices(devices: &[AdbDevice]) -> DeviceSnapshot {
-    match devices {
-        [] => DeviceSnapshot {
+    let ready_count = devices
+        .iter()
+        .filter(|device| device.state == "device")
+        .count();
+
+    if devices.is_empty() {
+        return DeviceSnapshot {
             kind: "noDevice",
             title: "Looking for your Android device".to_owned(),
             message: "Connect your phone with USB debugging enabled.".to_owned(),
-            serial: None,
-            model: None,
             count: 0,
-        },
-        [device] if device.state == "device" => DeviceSnapshot {
+            ready_count: 0,
+            devices: Vec::new(),
+        };
+    }
+
+    if ready_count > 0 {
+        let message = if ready_count == 1 && devices.len() == 1 {
+            "Connected and ready to launch.".to_owned()
+        } else if ready_count == 1 {
+            "One device is ready. Other connected devices need attention.".to_owned()
+        } else {
+            format!("Choose one of the {ready_count} ready devices to mirror.")
+        };
+        return DeviceSnapshot {
             kind: "connected",
-            title: "Device connected".to_owned(),
-            message: "Connected and ready to launch.".to_owned(),
-            serial: Some(device.serial.clone()),
-            model: device.model.clone(),
-            count: 1,
-        },
-        [device] if matches!(device.state.as_str(), "unauthorized" | "authorizing") => {
-            DeviceSnapshot {
-                kind: "unauthorized",
-                title: "Approve this computer".to_owned(),
-                message: "Unlock your phone and accept the USB debugging prompt.".to_owned(),
-                serial: Some(device.serial.clone()),
-                model: device.model.clone(),
-                count: 1,
-            }
-        }
-        [device] => DeviceSnapshot {
-            kind: "unavailable",
-            title: "Device unavailable".to_owned(),
-            message: format!(
-                "The device reports “{}”. Reconnect USB and try again.",
-                device.state
-            ),
-            serial: Some(device.serial.clone()),
-            model: device.model.clone(),
-            count: 1,
-        },
-        devices => DeviceSnapshot {
-            kind: "multipleDevices",
-            title: "Multiple devices connected".to_owned(),
-            message: "Disconnect extra devices, then refresh to continue.".to_owned(),
-            serial: None,
-            model: None,
+            title: if ready_count == 1 {
+                "Device connected".to_owned()
+            } else {
+                "Devices connected".to_owned()
+            },
+            message,
             count: devices.len(),
+            ready_count,
+            devices: devices.to_vec(),
+        };
+    }
+
+    let needs_authorization = devices
+        .iter()
+        .any(|device| matches!(device.state.as_str(), "unauthorized" | "authorizing"));
+    DeviceSnapshot {
+        kind: if needs_authorization {
+            "unauthorized"
+        } else {
+            "unavailable"
         },
+        title: if needs_authorization {
+            "Approve this computer".to_owned()
+        } else {
+            "Devices unavailable".to_owned()
+        },
+        message: if needs_authorization {
+            "Unlock the device and accept the USB debugging prompt.".to_owned()
+        } else {
+            "No connected device is ready. Reconnect USB and try again.".to_owned()
+        },
+        count: devices.len(),
+        ready_count: 0,
+        devices: devices.to_vec(),
     }
 }
 
@@ -142,9 +157,9 @@ fn adb_error(message: impl Into<String>) -> DeviceSnapshot {
         kind: "adbError",
         title: "ADB unavailable".to_owned(),
         message: message.into(),
-        serial: None,
-        model: None,
         count: 0,
+        ready_count: 0,
+        devices: Vec::new(),
     }
 }
 
@@ -219,6 +234,19 @@ phone-one unauthorized usb:1-2 transport_id:1\n\
     }
 
     #[test]
+    fn parses_physical_device_and_emulator_together() {
+        let output = "List of devices attached\n\
+R5CWB2H4YGD device product:dm2quew model:SM_S916U1 device:dm2q transport_id:30\n\
+emulator-5554 device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:20\n";
+
+        let devices = parse_adb_devices(output);
+        assert_eq!(devices.len(), 2);
+        assert_eq!(devices[0].serial, "R5CWB2H4YGD");
+        assert_eq!(devices[1].serial, "emulator-5554");
+        assert!(devices.iter().all(|device| device.state == "device"));
+    }
+
+    #[test]
     fn preserves_serials_containing_spaces() {
         let output = "List of devices attached\nserial with spaces device model:Pixel_9\n";
         let devices = parse_adb_devices(output);
@@ -238,6 +266,10 @@ phone-one unauthorized usb:1-2 transport_id:1\n\
             classify_devices(std::slice::from_ref(&connected)).kind,
             "connected"
         );
+        assert_eq!(
+            classify_devices(std::slice::from_ref(&connected)).ready_count,
+            1
+        );
 
         let unauthorized = AdbDevice {
             state: "unauthorized".to_owned(),
@@ -253,9 +285,30 @@ phone-one unauthorized usb:1-2 transport_id:1\n\
             ..connected.clone()
         };
         assert_eq!(classify_devices(&[offline]).kind, "unavailable");
-        assert_eq!(
-            classify_devices(&[connected, unauthorized]).kind,
-            "multipleDevices"
-        );
+
+        let multiple = classify_devices(&[connected, unauthorized]);
+        assert_eq!(multiple.kind, "connected");
+        assert_eq!(multiple.count, 2);
+        assert_eq!(multiple.ready_count, 1);
+        assert_eq!(multiple.devices.len(), 2);
+    }
+
+    #[test]
+    fn exposes_all_ready_devices_for_selection() {
+        let physical = AdbDevice {
+            serial: "R5CWB2H4YGD".to_owned(),
+            state: "device".to_owned(),
+            model: Some("SM_S916U1".to_owned()),
+        };
+        let emulator = AdbDevice {
+            serial: "emulator-5554".to_owned(),
+            state: "device".to_owned(),
+            model: Some("sdk_gphone64_x86_64".to_owned()),
+        };
+
+        let snapshot = classify_devices(&[emulator.clone(), physical.clone()]);
+        assert_eq!(snapshot.kind, "connected");
+        assert_eq!(snapshot.ready_count, 2);
+        assert_eq!(snapshot.devices, vec![emulator, physical]);
     }
 }
