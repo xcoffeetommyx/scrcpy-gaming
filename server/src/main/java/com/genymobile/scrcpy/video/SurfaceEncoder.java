@@ -73,7 +73,10 @@ public class SurfaceEncoder implements AsyncProcessor {
     private void streamCapture() throws IOException, ConfigurationException {
         Codec codec = streamer.getCodec();
         MediaCodec mediaCodec = createMediaCodec(codec, encoderName);
-        MediaFormat format = createFormat(codec.getMimeType(), videoBitRate, maxFps, codecOptions);
+        boolean useOperatingRate = maxFps > 0
+                && Build.VERSION.SDK_INT >= AndroidVersions.API_23_ANDROID_6_0
+                && !hasCodecOption(codecOptions, MediaFormat.KEY_OPERATING_RATE);
+        MediaFormat format = createFormat(codec.getMimeType(), videoBitRate, maxFps, codecOptions, useOperatingRate);
 
         MediaCodecInfo.VideoCapabilities caps;
         int alignment;
@@ -124,7 +127,23 @@ public class SurfaceEncoder implements AsyncProcessor {
                 boolean mediaCodecStarted = false;
                 boolean captureStarted = false;
                 try {
-                    mediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                    try {
+                        mediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                    } catch (IllegalStateException | IllegalArgumentException e) {
+                        if (!useOperatingRate) {
+                            throw e;
+                        }
+
+                        // Some vendor codecs reject KEY_OPERATING_RATE even though the platform API supports it.
+                        Ln.w("Video encoder rejected the operating-rate hint; retrying without it");
+                        useOperatingRate = false;
+                        format = createFormat(codec.getMimeType(), videoBitRate, maxFps, codecOptions, false);
+                        format.setInteger(MediaFormat.KEY_WIDTH, size.getWidth());
+                        format.setInteger(MediaFormat.KEY_HEIGHT, size.getHeight());
+                        retainedResetReasons = resetReasons;
+                        alive = true;
+                        continue;
+                    }
                     surface = mediaCodec.createInputSurface();
 
                     capture.start(surface);
@@ -256,6 +275,9 @@ public class SurfaceEncoder implements AsyncProcessor {
         do {
             int outputBufferId = codec.dequeueOutputBuffer(bufferInfo, -1);
             try {
+                if (outputBufferId == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    Ln.d("Video encoder output format: " + codec.getOutputFormat());
+                }
                 eos = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0;
                 // On EOS, there might be data or not, depending on bufferInfo.size
                 if (outputBufferId >= 0 && bufferInfo.size > 0) {
@@ -307,7 +329,8 @@ public class SurfaceEncoder implements AsyncProcessor {
         }
     }
 
-    private static MediaFormat createFormat(String videoMimeType, int bitRate, float maxFps, List<CodecOption> codecOptions) {
+    private static MediaFormat createFormat(String videoMimeType, int bitRate, float maxFps, List<CodecOption> codecOptions,
+            boolean useOperatingRate) {
         MediaFormat format = new MediaFormat();
         format.setString(MediaFormat.KEY_MIME, videoMimeType);
         format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
@@ -329,9 +352,10 @@ public class SurfaceEncoder implements AsyncProcessor {
             format.setInteger(MediaFormat.KEY_LATENCY, 1);
         }
         if (maxFps > 0) {
-            if (Build.VERSION.SDK_INT >= AndroidVersions.API_23_ANDROID_6_0) {
+            if (useOperatingRate) {
                 // Let the codec plan resources for the requested capture rate.
                 format.setFloat(MediaFormat.KEY_OPERATING_RATE, maxFps);
+                Ln.d("Video encoder operating rate requested: " + maxFps);
             }
             // The key existed privately before Android 10:
             // <https://android.googlesource.com/platform/frameworks/base/+/625f0aad9f7a259b6881006ad8710adce57d1384%5E%21/>
@@ -349,6 +373,19 @@ public class SurfaceEncoder implements AsyncProcessor {
         }
 
         return format;
+    }
+
+    static boolean hasCodecOption(List<CodecOption> codecOptions, String key) {
+        if (codecOptions == null) {
+            return false;
+        }
+
+        for (CodecOption option : codecOptions) {
+            if (key.equals(option.getKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
