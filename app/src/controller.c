@@ -58,10 +58,7 @@ sc_controller_init(struct sc_controller *controller, sc_socket control_socket,
 
     controller->control_socket = control_socket;
     controller->stopped = false;
-    controller->queue_push_count = 0;
-    controller->queue_pop_count = 0;
-    controller->pending_gamepad_axis_mask = 0;
-    controller->next_pending_gamepad_axis = 0;
+    sc_gamepad_axis_queue_init(&controller->gamepad_axis_queue);
 
     controller->resize_display.width = 0;
     controller->resize_display.height = 0;
@@ -83,11 +80,6 @@ sc_controller_configure(struct sc_controller *controller,
 
 void
 sc_controller_destroy(struct sc_controller *controller) {
-    controller->pending_gamepad_axis_mask = 0;
-    for (unsigned i = 0; i < SC_MAX_GAMEPADS; ++i) {
-        controller->pending_gamepad_axis_after[i] = 0;
-    }
-
     sc_cond_destroy(&controller->msg_cond);
     sc_mutex_destroy(&controller->mutex);
 
@@ -123,7 +115,8 @@ sc_controller_push_msg_locked(struct sc_controller *controller,
     // Otherwise, the msg is discarded
 
     if (pushed) {
-        ++controller->queue_push_count;
+        sc_gamepad_axis_queue_notify_queued(
+            &controller->gamepad_axis_queue);
         sc_cond_signal(&controller->msg_cond);
     }
 
@@ -150,8 +143,7 @@ sc_controller_push_msg(struct sc_controller *controller,
             && msg->uhid_destroy.id >= SC_HID_ID_GAMEPAD_FIRST
             && msg->uhid_destroy.id <= SC_HID_ID_GAMEPAD_LAST) {
         unsigned idx = msg->uhid_destroy.id - SC_HID_ID_GAMEPAD_FIRST;
-        controller->pending_gamepad_axis_mask &= ~(1 << idx);
-        controller->pending_gamepad_axis_after[idx] = 0;
+        sc_gamepad_axis_queue_clear(&controller->gamepad_axis_queue, idx);
     }
 
     bool non_droppable = !sc_control_msg_is_droppable(msg);
@@ -170,9 +162,7 @@ sc_controller_push_gamepad_axis(struct sc_controller *controller,
 
     sc_mutex_lock(&controller->mutex);
     controller->pending_gamepad_axis[idx] = *msg;
-    controller->pending_gamepad_axis_after[idx] =
-        controller->queue_push_count;
-    controller->pending_gamepad_axis_mask |= 1 << idx;
+    sc_gamepad_axis_queue_push(&controller->gamepad_axis_queue, idx);
     sc_cond_signal(&controller->msg_cond);
     sc_mutex_unlock(&controller->mutex);
 
@@ -188,8 +178,7 @@ sc_controller_push_gamepad_button(struct sc_controller *controller,
 
     // The button report contains the latest axis state, so it supersedes any
     // pending axis report. Keeping every button report preserves all edges.
-    controller->pending_gamepad_axis_mask &= ~(1 << idx);
-    controller->pending_gamepad_axis_after[idx] = 0;
+    sc_gamepad_axis_queue_clear(&controller->gamepad_axis_queue, idx);
     bool pushed = sc_controller_push_msg_locked(controller, msg, true);
 
     sc_mutex_unlock(&controller->mutex);
@@ -231,24 +220,6 @@ process_msg(struct sc_controller *controller,
     return true;
 }
 
-static bool
-sc_controller_find_eligible_gamepad_axis_locked(
-        const struct sc_controller *controller, unsigned *out_idx) {
-    for (unsigned i = 0; i < SC_MAX_GAMEPADS; ++i) {
-        unsigned idx =
-            (controller->next_pending_gamepad_axis + i) % SC_MAX_GAMEPADS;
-        uint8_t mask = 1 << idx;
-        if ((controller->pending_gamepad_axis_mask & mask)
-                && controller->pending_gamepad_axis_after[idx]
-                    <= controller->queue_pop_count) {
-            *out_idx = idx;
-            return true;
-        }
-    }
-
-    return false;
-}
-
 static int
 run_controller(void *data) {
     struct sc_controller *controller = data;
@@ -260,7 +231,8 @@ run_controller(void *data) {
         while (!controller->stopped
                 && !controller->resize_display.width
                 && sc_vecdeque_is_empty(&controller->queue)
-                && !controller->pending_gamepad_axis_mask) {
+                && sc_gamepad_axis_queue_is_empty(
+                    &controller->gamepad_axis_queue)) {
             sc_cond_wait(&controller->msg_cond, &controller->mutex);
         }
         if (controller->stopped) {
@@ -272,13 +244,15 @@ run_controller(void *data) {
 
         bool has_resize_display = controller->resize_display.width;
         assert(has_resize_display || !sc_vecdeque_is_empty(&controller->queue)
-               || controller->pending_gamepad_axis_mask);
+               || !sc_gamepad_axis_queue_is_empty(
+                   &controller->gamepad_axis_queue));
 
         struct sc_control_msg msg;
         unsigned pending_gamepad_axis_idx;
         bool has_eligible_gamepad_axis =
-            sc_controller_find_eligible_gamepad_axis_locked(
-                controller, &pending_gamepad_axis_idx);
+            !has_resize_display
+            && sc_gamepad_axis_queue_take(&controller->gamepad_axis_queue,
+                                          &pending_gamepad_axis_idx);
 
         if (has_resize_display) {
             msg.type = SC_CONTROL_MSG_TYPE_RESIZE_DISPLAY;
@@ -287,19 +261,14 @@ run_controller(void *data) {
             controller->resize_display.width = 0;
             controller->resize_display.height = 0;
         } else if (has_eligible_gamepad_axis) {
-            unsigned idx = pending_gamepad_axis_idx;
-            uint8_t mask = 1 << idx;
-            msg = controller->pending_gamepad_axis[idx];
-            controller->pending_gamepad_axis_mask &= ~mask;
-            controller->pending_gamepad_axis_after[idx] = 0;
-            controller->next_pending_gamepad_axis =
-                (idx + 1) % SC_MAX_GAMEPADS;
+            msg = controller->pending_gamepad_axis[pending_gamepad_axis_idx];
         } else {
             // A pending axis is ineligible only while an older queued message
             // still has to be processed.
             assert(!sc_vecdeque_is_empty(&controller->queue));
             msg = sc_vecdeque_pop(&controller->queue);
-            ++controller->queue_pop_count;
+            sc_gamepad_axis_queue_notify_dequeued(
+                &controller->gamepad_axis_queue);
         }
         sc_mutex_unlock(&controller->mutex);
 

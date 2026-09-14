@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "hid/hid_event.h"
+#include "hid/gamepad_axis_queue.h"
 #include "hid/hid_gamepad.h"
 #include "usb/usb.h"
 #include "util/acksync.h"
@@ -48,8 +49,7 @@ struct sc_aoa {
 
     // Same ordering invariant as the UHID controller queue.
     struct sc_hid_input pending_gamepad_axis[SC_MAX_GAMEPADS];
-    uint8_t pending_gamepad_axis_mask;
-    uint8_t next_pending_gamepad_axis;
+    struct sc_gamepad_axis_queue gamepad_axis_queue;
 
     struct sc_acksync *acksync;
 };

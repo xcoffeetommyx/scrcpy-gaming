@@ -37,6 +37,7 @@ src = [
     'src/version.c',
     'src/video_regulator.c',
     'src/hid/hid_gamepad.c',
+    'src/hid/gamepad_axis_queue.c',
     'src/hid/hid_keyboard.c',
     'src/hid/hid_mouse.c',
     'src/trait/frame_source.c',
@@ -264,6 +265,10 @@ if get_option('buildtype') == 'debug'
         ['test_device_msg_deserialize', [
             'tests/test_device_msg_deserialize.c',
             'src/device_msg.c',
+        ]],
+        ['test_gamepad_axis_queue', [
+            'tests/test_gamepad_axis_queue.c',
+            'src/hid/gamepad_axis_queue.c',
         ]],
         ['test_orientation', [
             'tests/test_orientation.c',

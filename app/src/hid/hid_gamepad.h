@@ -6,12 +6,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "hid/gamepad_ids.h"
 #include "hid/hid_event.h"
 #include "input_events.h"
-
-#define SC_MAX_GAMEPADS 8
-#define SC_HID_ID_GAMEPAD_FIRST 3
-#define SC_HID_ID_GAMEPAD_LAST (SC_HID_ID_GAMEPAD_FIRST + SC_MAX_GAMEPADS - 1)
 
 struct sc_hid_gamepad_slot {
     uint32_t gamepad_id;

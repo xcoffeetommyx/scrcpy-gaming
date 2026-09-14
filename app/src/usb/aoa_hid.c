@@ -79,8 +79,7 @@ sc_aoa_init(struct sc_aoa *aoa, struct sc_usb *usb,
     }
 
     aoa->stopped = false;
-    aoa->pending_gamepad_axis_mask = 0;
-    aoa->next_pending_gamepad_axis = 0;
+    sc_gamepad_axis_queue_init(&aoa->gamepad_axis_queue);
     aoa->acksync = acksync;
     aoa->usb = usb;
 
@@ -245,6 +244,7 @@ sc_aoa_push_input_with_ack_to_wait(struct sc_aoa *aoa,
         aoa_event->type = SC_AOA_EVENT_TYPE_INPUT;
         aoa_event->input.hid = *hid_input;
         aoa_event->input.ack_to_wait = ack_to_wait;
+        sc_gamepad_axis_queue_notify_queued(&aoa->gamepad_axis_queue);
         pushed = true;
 
         if (was_empty) {
@@ -276,7 +276,7 @@ sc_aoa_push_gamepad_axis(struct sc_aoa *aoa,
 
     sc_mutex_lock(&aoa->mutex);
     aoa->pending_gamepad_axis[idx] = *hid_input;
-    aoa->pending_gamepad_axis_mask |= 1 << idx;
+    sc_gamepad_axis_queue_push(&aoa->gamepad_axis_queue, idx);
     sc_cond_signal(&aoa->event_cond);
     sc_mutex_unlock(&aoa->mutex);
 
@@ -293,7 +293,7 @@ sc_aoa_push_gamepad_button(struct sc_aoa *aoa,
     unsigned idx = sc_aoa_gamepad_index(hid_input);
 
     sc_mutex_lock(&aoa->mutex);
-    aoa->pending_gamepad_axis_mask &= ~(1 << idx);
+    sc_gamepad_axis_queue_clear(&aoa->gamepad_axis_queue, idx);
 
     // Button reports are non-droppable to preserve both press and release.
     struct sc_aoa_event *aoa_event =
@@ -307,6 +307,7 @@ sc_aoa_push_gamepad_button(struct sc_aoa *aoa,
     aoa_event->type = SC_AOA_EVENT_TYPE_INPUT;
     aoa_event->input.hid = *hid_input;
     aoa_event->input.ack_to_wait = SC_SEQUENCE_INVALID;
+    sc_gamepad_axis_queue_notify_queued(&aoa->gamepad_axis_queue);
     sc_cond_signal(&aoa->event_cond);
 
     sc_mutex_unlock(&aoa->mutex);
@@ -337,6 +338,7 @@ sc_aoa_push_open(struct sc_aoa *aoa, const struct sc_hid_open *hid_open,
     aoa_event->type = SC_AOA_EVENT_TYPE_OPEN;
     aoa_event->open.hid = *hid_open;
     aoa_event->open.exit_on_error = exit_on_open_error;
+    sc_gamepad_axis_queue_notify_queued(&aoa->gamepad_axis_queue);
 
     if (was_empty) {
         sc_cond_signal(&aoa->event_cond);
@@ -357,7 +359,7 @@ sc_aoa_push_close(struct sc_aoa *aoa, const struct sc_hid_close *hid_close) {
     if (hid_close->hid_id >= SC_HID_ID_GAMEPAD_FIRST
             && hid_close->hid_id <= SC_HID_ID_GAMEPAD_LAST) {
         unsigned idx = hid_close->hid_id - SC_HID_ID_GAMEPAD_FIRST;
-        aoa->pending_gamepad_axis_mask &= ~(1 << idx);
+        sc_gamepad_axis_queue_clear(&aoa->gamepad_axis_queue, idx);
     }
     bool was_empty = sc_vecdeque_is_empty(&aoa->queue);
 
@@ -373,6 +375,7 @@ sc_aoa_push_close(struct sc_aoa *aoa, const struct sc_hid_close *hid_close) {
 
     aoa_event->type = SC_AOA_EVENT_TYPE_CLOSE;
     aoa_event->close.hid = *hid_close;
+    sc_gamepad_axis_queue_notify_queued(&aoa->gamepad_axis_queue);
 
     if (was_empty) {
         sc_cond_signal(&aoa->event_cond);
@@ -478,7 +481,8 @@ run_aoa_thread(void *data) {
     for (;;) {
         sc_mutex_lock(&aoa->mutex);
         while (!aoa->stopped && sc_vecdeque_is_empty(&aoa->queue)
-                && !aoa->pending_gamepad_axis_mask) {
+                && sc_gamepad_axis_queue_is_empty(
+                    &aoa->gamepad_axis_queue)) {
             sc_cond_wait(&aoa->event_cond, &aoa->mutex);
         }
         if (aoa->stopped) {
@@ -488,24 +492,25 @@ run_aoa_thread(void *data) {
         }
 
         assert(!sc_vecdeque_is_empty(&aoa->queue)
-               || aoa->pending_gamepad_axis_mask);
+               || !sc_gamepad_axis_queue_is_empty(
+                   &aoa->gamepad_axis_queue));
 
         struct sc_aoa_event event;
-        if (!sc_vecdeque_is_empty(&aoa->queue)) {
-            event = sc_vecdeque_pop(&aoa->queue);
-        } else {
+        unsigned pending_gamepad_axis_idx;
+        bool has_eligible_gamepad_axis =
+            sc_gamepad_axis_queue_take(&aoa->gamepad_axis_queue,
+                                       &pending_gamepad_axis_idx);
+        if (has_eligible_gamepad_axis) {
             event.type = SC_AOA_EVENT_TYPE_INPUT;
             event.input.ack_to_wait = SC_SEQUENCE_INVALID;
-            unsigned idx = aoa->next_pending_gamepad_axis;
-            uint8_t mask = 1 << idx;
-            while (!(aoa->pending_gamepad_axis_mask & mask)) {
-                idx = (idx + 1) % SC_MAX_GAMEPADS;
-                mask = 1 << idx;
-            }
-            event.input.hid = aoa->pending_gamepad_axis[idx];
-            aoa->pending_gamepad_axis_mask &= ~mask;
-            aoa->next_pending_gamepad_axis =
-                (idx + 1) % SC_MAX_GAMEPADS;
+            event.input.hid =
+                aoa->pending_gamepad_axis[pending_gamepad_axis_idx];
+        } else {
+            // A pending axis is ineligible only while an older queued event
+            // still has to be processed.
+            assert(!sc_vecdeque_is_empty(&aoa->queue));
+            event = sc_vecdeque_pop(&aoa->queue);
+            sc_gamepad_axis_queue_notify_dequeued(&aoa->gamepad_axis_queue);
         }
         sc_mutex_unlock(&aoa->mutex);
 
