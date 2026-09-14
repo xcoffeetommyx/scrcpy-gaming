@@ -139,7 +139,7 @@ static void test_game_mode(void) {
     assert(opts->video_buffer == 0);
     assert(opts->audio_buffer == 0);
     assert(!opts->mipmaps);
-    assert(!opts->forward_key_repeat);
+    assert(opts->forward_key_repeat);
     assert(!opts->max_fps);
     assert(opts->max_size == 0);
     assert(opts->video_bit_rate == 0);
@@ -171,8 +171,37 @@ static void test_game_mode_overrides(void) {
     assert(opts->video_buffer == SC_TICK_FROM_MS(10));
     assert(opts->audio_buffer == SC_TICK_FROM_MS(50));
     assert(!opts->mipmaps);
-    assert(!opts->forward_key_repeat);
+    assert(opts->forward_key_repeat);
 }
+
+static void test_game_mode_with_uhid_keyboard(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+    };
+    char *argv[] = {
+        "scrcpy", "--game-mode", "--keyboard=uhid",
+    };
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+    assert(args.opts.keyboard_input_mode == SC_KEYBOARD_INPUT_MODE_UHID);
+    assert(args.opts.forward_key_repeat);
+}
+
+#ifdef HAVE_USB
+static void test_game_mode_with_otg(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+    };
+    char *argv[] = {
+        "scrcpy", "--game-mode", "--otg",
+    };
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+    assert(args.opts.gamepad_input_mode == SC_GAMEPAD_INPUT_MODE_AOA);
+}
+#endif
 
 static void test_game_mode_without_audio(void) {
     struct scrcpy_cli_args args = {
@@ -257,6 +286,24 @@ static void test_game_mode_profile_overrides(void) {
     assert(!args.opts.audio);
 }
 
+static void test_game_mode_profile_positive_overrides(void) {
+    struct scrcpy_cli_args args = {
+        .opts = scrcpy_options_default,
+    };
+    char *argv[] = {
+        "scrcpy",
+        "--game-mode-profile=competitive",
+        "--audio",
+        "--mipmaps",
+    };
+
+    bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
+    assert(ok);
+    assert(args.opts.audio);
+    assert(args.opts.audio_buffer == 0);
+    assert(args.opts.mipmaps);
+}
+
 static void test_invalid_game_mode_profile(void) {
     struct scrcpy_cli_args args = {
         .opts = scrcpy_options_default,
@@ -307,9 +354,14 @@ int main(int argc, char *argv[]) {
     test_options2();
     test_game_mode();
     test_game_mode_overrides();
+    test_game_mode_with_uhid_keyboard();
+#ifdef HAVE_USB
+    test_game_mode_with_otg();
+#endif
     test_game_mode_without_audio();
     test_game_mode_profiles();
     test_game_mode_profile_overrides();
+    test_game_mode_profile_positive_overrides();
     test_invalid_game_mode_profile();
     test_parse_shortcut_mods();
     return 0;

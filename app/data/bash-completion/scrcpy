@@ -3,6 +3,7 @@ _scrcpy() {
     local opts="
         --always-on-top
         --angle
+        --audio
         --audio-bit-rate=
         --audio-buffer=
         --audio-codec=
@@ -32,6 +33,8 @@ _scrcpy() {
         -f --fullscreen
         --force-adb-forward
         -G
+        --game-mode
+        --game-mode-profile=
         --gamepad=
         -h --help
         --ignore-video-encoder-constraints
@@ -49,6 +52,7 @@ _scrcpy() {
         -M
         --max-fps=
         --min-size-alignment=
+        --mipmaps
         --mouse=
         --mouse-bind=
         -n --no-control

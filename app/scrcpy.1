@@ -218,7 +218,7 @@ Do not attempt to use "adb reverse" to connect to the device.
 
 .TP
 .B \-\-game\-mode
-Enable a low-latency gaming preset. Unless explicitly overridden, this sets \fB\-\-gamepad=uhid\fR, \fB\-\-video\-codec=h264\fR, \fB\-\-video\-buffer=0\fR, \fB\-\-audio\-buffer=0\fR (when audio is enabled), \fB\-\-no\-mipmaps\fR and \fB\-\-no\-key\-repeat\fR.
+Enable a low-latency gaming preset. Unless explicitly overridden, this enables UHID gamepads (AOA in OTG mode), sets \fB\-\-video\-codec=h264\fR, \fB\-\-video\-buffer=0\fR, \fB\-\-audio\-buffer=0\fR (when audio is enabled), and \fB\-\-no\-mipmaps\fR.
 
 .TP
 .BI "\-\-game\-mode\-profile " profile
@@ -401,6 +401,10 @@ Examples:
     \-\-new\-display=/240    # main display size and 240 dpi
 
 .TP
+.B \-\-audio
+Enable audio forwarding. This may be used to override a game mode profile.
+
+.TP
 .B \-\-no\-audio
 Disable audio forwarding.
 
@@ -429,6 +433,10 @@ This option disables this behavior.
 .TP
 .B \-\-no\-key\-repeat
 Do not forward repeated key events when a key is held down.
+
+.TP
+.B \-\-mipmaps
+Enable mipmap generation when supported. This may be used to override game mode.
 
 .TP
 .B \-\-no\-mipmaps

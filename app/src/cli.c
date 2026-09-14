@@ -34,6 +34,7 @@ enum {
     OPT_MAX_FPS,
     OPT_DISPLAY_ID,
     OPT_RENDER_DRIVER,
+    OPT_MIPMAPS,
     OPT_NO_MIPMAPS,
     OPT_VIDEO_CODEC_OPTIONS,
     OPT_FORCE_ADB_FORWARD,
@@ -57,6 +58,7 @@ enum {
     OPT_PRINT_FPS,
     OPT_NO_POWER_ON,
     OPT_VIDEO_CODEC,
+    OPT_AUDIO,
     OPT_NO_AUDIO,
     OPT_AUDIO_BIT_RATE,
     OPT_AUDIO_CODEC,
@@ -421,9 +423,10 @@ static const struct sc_option options[] = {
         .longopt_id = OPT_GAME_MODE,
         .longopt = "game-mode",
         .text = "Enable a low-latency gaming preset. Unless explicitly "
-                "overridden, this sets --gamepad=uhid, --video-codec=h264, "
+                "overridden, this enables UHID gamepads (AOA in OTG mode), "
+                "sets --video-codec=h264, "
                 "--video-buffer=0, --audio-buffer=0 (when audio is enabled), "
-                "--no-mipmaps and --no-key-repeat.",
+                "and --no-mipmaps.",
     },
     {
         .longopt_id = OPT_GAME_MODE_PROFILE,
@@ -639,6 +642,12 @@ static const struct sc_option options[] = {
                 "    --new-display=/240    # main display size and 240 dpi",
     },
     {
+        .longopt_id = OPT_AUDIO,
+        .longopt = "audio",
+        .text = "Enable audio forwarding. This may be used to override a "
+                "game mode profile.",
+    },
+    {
         .longopt_id = OPT_NO_AUDIO,
         .longopt = "no-audio",
         .text = "Disable audio forwarding.",
@@ -676,6 +685,12 @@ static const struct sc_option options[] = {
         .longopt_id = OPT_NO_KEY_REPEAT,
         .longopt = "no-key-repeat",
         .text = "Do not forward repeated key events when a key is held down.",
+    },
+    {
+        .longopt_id = OPT_MIPMAPS,
+        .longopt = "mipmaps",
+        .text = "Enable mipmap generation when supported. This may be used "
+                "to override game mode.",
     },
     {
         .longopt_id = OPT_NO_MIPMAPS,
@@ -2555,7 +2570,6 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
     bool video_buffer_explicit = false;
     bool audio_buffer_explicit = false;
     bool mipmaps_explicit = false;
-    bool key_repeat_explicit = false;
 
     optind = 0; // reset to start from the first argument in tests
 
@@ -2762,9 +2776,12 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 opts->mipmaps = false;
                 mipmaps_explicit = true;
                 break;
+            case OPT_MIPMAPS:
+                opts->mipmaps = true;
+                mipmaps_explicit = true;
+                break;
             case OPT_NO_KEY_REPEAT:
                 opts->forward_key_repeat = false;
-                key_repeat_explicit = true;
                 break;
             case OPT_VIDEO_CODEC_OPTIONS:
                 opts->video_codec_options = optarg;
@@ -2816,6 +2833,10 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
                 break;
             case OPT_NO_AUDIO:
                 opts->audio = false;
+                audio_explicit = true;
+                break;
+            case OPT_AUDIO:
+                opts->audio = true;
                 audio_explicit = true;
                 break;
             case OPT_NO_CLEANUP:
@@ -3074,7 +3095,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
 
     if (game_mode) {
         if (!gamepad_explicit) {
-            opts->gamepad_input_mode = SC_GAMEPAD_INPUT_MODE_UHID;
+            opts->gamepad_input_mode = SC_GAMEPAD_INPUT_MODE_UHID_OR_AOA;
         }
         if (!video_codec_explicit) {
             opts->video_codec = SC_CODEC_H264;
@@ -3087,9 +3108,6 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
         }
         if (!mipmaps_explicit) {
             opts->mipmaps = false;
-        }
-        if (!key_repeat_explicit) {
-            opts->forward_key_repeat = false;
         }
     }
 
