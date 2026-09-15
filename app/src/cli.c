@@ -425,7 +425,7 @@ static const struct sc_option options[] = {
         .text = "Enable a low-latency gaming preset. Unless explicitly "
                 "overridden, this enables UHID gamepads (AOA in OTG mode), "
                 "sets --video-codec=h264, "
-                "--video-buffer=0, --audio-buffer=0 (when audio is enabled), "
+                "--video-buffer=0, --audio-buffer=20 (when audio is enabled), "
                 "and --no-mipmaps.",
     },
     {
@@ -3104,7 +3104,11 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
             opts->video_buffer = 0;
         }
         if (opts->audio && !audio_buffer_explicit) {
-            opts->audio_buffer = 0;
+            // Opus commonly delivers 20 ms packets. Keeping one packet of
+            // audio buffered prevents normal transport and decoder jitter
+            // from causing audible underruns without adding the 50 ms used
+            // by the standard scrcpy preset.
+            opts->audio_buffer = SC_TICK_FROM_MS(20);
         }
         if (!mipmaps_explicit) {
             opts->mipmaps = false;
