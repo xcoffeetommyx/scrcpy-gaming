@@ -21,7 +21,7 @@ export const PROFILES: readonly ProfileOption[] = [
     name: "Balanced",
     eyebrow: "Recommended",
     description: "Sharper motion without giving up the responsive feel.",
-    specs: ["120 FPS", "720 max", "6 Mbps", "Audio off"],
+    specs: ["120 FPS", "720 max", "6 Mbps", "Audio on · 40 ms buffer"],
   },
   {
     id: "quality",

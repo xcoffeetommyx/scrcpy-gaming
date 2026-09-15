@@ -434,9 +434,9 @@ static const struct sc_option options[] = {
         .argdesc = "profile",
         .text = "Apply a game mode profile. Possible values are "
                 "\"competitive\" (120 FPS, max size 720, 2M, no audio), "
-                "\"balanced\" (120 FPS, max size 720, 6M, no audio) and "
-                "\"quality\" (120 FPS, max size 1080, 12M). Explicit options "
-                "override profile values. Implies --game-mode.",
+                "\"balanced\" (120 FPS, max size 720, 6M, audio) and "
+                "\"quality\" (120 FPS, max size 1080, 12M, audio). Explicit "
+                "options override profile values. Implies --game-mode.",
     },
     {
         .shortopt = 'G',
@@ -3089,7 +3089,7 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
         }
         if (!audio_explicit) {
             opts->audio =
-                game_mode_profile == SC_GAME_MODE_PROFILE_QUALITY;
+                game_mode_profile != SC_GAME_MODE_PROFILE_COMPETITIVE;
         }
     }
 

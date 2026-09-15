@@ -248,7 +248,8 @@ static void test_game_mode_profiles(void) {
     assert(!strcmp(balanced.opts.max_fps, "120"));
     assert(balanced.opts.max_size == 720);
     assert(balanced.opts.video_bit_rate == 6000000);
-    assert(!balanced.opts.audio);
+    assert(balanced.opts.audio);
+    assert(balanced.opts.audio_buffer == SC_TICK_FROM_MS(40));
 
     struct scrcpy_cli_args quality = {
         .opts = scrcpy_options_default,
@@ -302,6 +303,34 @@ static void test_game_mode_profile_positive_overrides(void) {
     assert(args.opts.audio);
     assert(args.opts.audio_buffer == SC_TICK_FROM_MS(40));
     assert(args.opts.mipmaps);
+}
+
+static void test_game_mode_profile_audio_overrides(void) {
+    struct scrcpy_cli_args balanced = {
+        .opts = scrcpy_options_default,
+    };
+    char *balanced_argv[] = {
+        "scrcpy", "--game-mode-profile=balanced", "--no-audio",
+    };
+
+    bool ok = scrcpy_parse_args(&balanced, ARRAY_LEN(balanced_argv),
+                                balanced_argv);
+    assert(ok);
+    assert(!balanced.opts.audio);
+    assert(balanced.opts.audio_buffer == -1);
+
+    struct scrcpy_cli_args competitive = {
+        .opts = scrcpy_options_default,
+    };
+    char *competitive_argv[] = {
+        "scrcpy", "--game-mode-profile=competitive", "--audio",
+    };
+
+    ok = scrcpy_parse_args(&competitive, ARRAY_LEN(competitive_argv),
+                           competitive_argv);
+    assert(ok);
+    assert(competitive.opts.audio);
+    assert(competitive.opts.audio_buffer == SC_TICK_FROM_MS(40));
 }
 
 static void test_invalid_game_mode_profile(void) {
@@ -362,6 +391,7 @@ int main(int argc, char *argv[]) {
     test_game_mode_profiles();
     test_game_mode_profile_overrides();
     test_game_mode_profile_positive_overrides();
+    test_game_mode_profile_audio_overrides();
     test_invalid_game_mode_profile();
     test_parse_shortcut_mods();
     return 0;
