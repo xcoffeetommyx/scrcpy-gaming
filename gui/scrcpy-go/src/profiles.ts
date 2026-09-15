@@ -28,7 +28,7 @@ export const PROFILES: readonly ProfileOption[] = [
     name: "Quality",
     eyebrow: "More detail",
     description: "A richer picture for games where detail matters most.",
-    specs: ["120 FPS", "1080 max", "12 Mbps", "Audio on · 20 ms buffer"],
+    specs: ["120 FPS", "1080 max", "12 Mbps", "Audio on · 40 ms buffer"],
   },
 ] as const;
 

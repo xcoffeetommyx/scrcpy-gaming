@@ -137,7 +137,7 @@ static void test_game_mode(void) {
     assert(opts->gamepad_input_mode == SC_GAMEPAD_INPUT_MODE_UHID);
     assert(opts->video_codec == SC_CODEC_H264);
     assert(opts->video_buffer == 0);
-    assert(opts->audio_buffer == SC_TICK_FROM_MS(20));
+    assert(opts->audio_buffer == SC_TICK_FROM_MS(40));
     assert(!opts->mipmaps);
     assert(opts->forward_key_repeat);
     assert(!opts->max_fps);
@@ -262,7 +262,7 @@ static void test_game_mode_profiles(void) {
     assert(quality.opts.max_size == 1080);
     assert(quality.opts.video_bit_rate == 12000000);
     assert(quality.opts.audio);
-    assert(quality.opts.audio_buffer == SC_TICK_FROM_MS(20));
+    assert(quality.opts.audio_buffer == SC_TICK_FROM_MS(40));
 }
 
 static void test_game_mode_profile_overrides(void) {
@@ -300,7 +300,7 @@ static void test_game_mode_profile_positive_overrides(void) {
     bool ok = scrcpy_parse_args(&args, ARRAY_LEN(argv), argv);
     assert(ok);
     assert(args.opts.audio);
-    assert(args.opts.audio_buffer == SC_TICK_FROM_MS(20));
+    assert(args.opts.audio_buffer == SC_TICK_FROM_MS(40));
     assert(args.opts.mipmaps);
 }
 
