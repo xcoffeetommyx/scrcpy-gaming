@@ -80,6 +80,8 @@ jobs:
       - name: Package the graphical Linux app
         working-directory: gui/scrcpy-go
         run: |
+          # Cached Rust output may include installers from an older version.
+          rm -rf src-tauri/target/release/bundle
           npm run tauri build -- --bundles deb,appimage
           bash scripts/finalize-appimage.sh
       - name: Verify package contents and launch
