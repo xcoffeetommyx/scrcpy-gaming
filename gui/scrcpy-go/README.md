@@ -54,6 +54,9 @@ From `gui/scrcpy-go`, run `npm ci` and `npm run tauri build`.
 Then run `bash scripts/finalize-appimage.sh` to keep the AppImage's graphics
 driver dependencies compatible with newer desktops. This uses Tauri's cached
 AppImage packaging tool and removes the stale bundled Wayland client library.
+The AppImage also defaults its settings window to WebKit's compatible rendering
+path to avoid blank windows on affected graphics stacks. The separate scrcpy
+video window still uses SDL and its configured graphics/pacing settings.
 The cross-platform staging script validates and bundles that backend. Use
 `SCRCPY_GO_BACKEND_DIR` to supply a different distribution directory.
 

@@ -17,6 +17,12 @@ fi
 xwininfo -root -tree | tee "$output/$name-windows.txt"
 grep -q 'Scrcpy GO' "$output/$name-windows.txt"
 import -window root "$output/$name.png"
+# The settings window must contain painted content, not just an X window.
+contrast=$(convert "$output/$name.png" -crop 600x400+250+200 +repage -format '%[fx:standard_deviation]' info:)
+awk -v value="$contrast" 'BEGIN { exit !(value > 0.01) }' || {
+    echo "$name opened a blank window" >&2
+    exit 1
+}
 cat "$output/$name.log"
 if grep -Eqi 'Aborting|EGL_BAD|failed to create.*display|WebKitWebProcess.*(crash|error)' "$output/$name.log"; then
     echo "$name reported a webview rendering failure" >&2
