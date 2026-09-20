@@ -76,6 +76,24 @@ export default function App() {
     () => new Set(),
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [linuxUsbSetup, setLinuxUsbSetup] = useState(false);
+  const [usbSetupBusy, setUsbSetupBusy] = useState(false);
+  const [usbSetupMessage, setUsbSetupMessage] = useState("");
+  useEffect(() => {
+    void invoke<boolean>("supports_usb_setup").then(setLinuxUsbSetup).catch(() => {});
+  }, []);
+  async function setupUsb() {
+    if (usbSetupBusy) return;
+    setUsbSetupBusy(true);
+    setUsbSetupMessage("");
+    try {
+      setUsbSetupMessage(await invoke<string>("setup_usb"));
+    } catch (error) {
+      setUsbSetupMessage(friendlyError(error));
+    } finally {
+      setUsbSetupBusy(false);
+    }
+  }
   const [logs, setLogs] = useState<LogEvent[]>([
     {
       source: "system",
@@ -312,6 +330,7 @@ export default function App() {
           refreshing={refreshing}
           onSelect={setSelectedSerial}
           onRefresh={() => void refreshDevices(true)}
+          usbSetup={linuxUsbSetup ? { busy: usbSetupBusy, message: usbSetupMessage, onSetup: () => void setupUsb() } : undefined}
         />
 
         <ProfileSelector

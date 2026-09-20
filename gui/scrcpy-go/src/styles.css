@@ -1115,3 +1115,13 @@ button {
     transition-duration: 1ms !important;
   }
 }
+.usb-setup-button {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.usb-setup-button:disabled { opacity: 0.6; cursor: wait; }

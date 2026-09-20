@@ -12,6 +12,7 @@ interface DeviceStatusCardProps {
   refreshing: boolean;
   onSelect: (serial: string) => void;
   onRefresh: () => void;
+  usbSetup?: { busy: boolean; message: string; onSetup: () => void };
 }
 
 const STATUS_LABELS: Record<DeviceSnapshot["kind"], string> = {
@@ -29,6 +30,7 @@ export function DeviceStatusCard({
   refreshing,
   onSelect,
   onRefresh,
+  usbSetup,
 }: DeviceStatusCardProps) {
   const selectedDevice = snapshot.devices.find(
     (device) => device.serial === selectedSerial,
@@ -135,6 +137,16 @@ export function DeviceStatusCard({
           <span>{displayDevice ? "ADB serial" : "Connection"}</span>
           <strong>{displayDevice?.serial ?? "USB debugging required"}</strong>
         </div>
+      )}
+      {usbSetup && (
+        <details className="device-details">
+          <summary>Linux USB connection help</summary>
+          <p>Allow this desktop account to connect to Android phones. Setup asks for your administrator password once.</p>
+          <button className="usb-setup-button" type="button" disabled={usbSetup.busy} onClick={usbSetup.onSetup}>
+            {usbSetup.busy ? "Waiting for authorization…" : "Set up USB access"}
+          </button>
+          <p role="status">{usbSetup.message}</p>
+        </details>
       )}
     </section>
   );

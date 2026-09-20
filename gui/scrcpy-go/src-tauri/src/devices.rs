@@ -64,6 +64,19 @@ pub fn parse_adb_devices(output: &str) -> Vec<AdbDevice> {
         }
 
         let tokens: Vec<&str> = line.split_whitespace().collect();
+        if let Some(index) = tokens
+            .windows(2)
+            .position(|pair| pair == ["no", "permissions"])
+        {
+            if index > 0 {
+                devices.push(AdbDevice {
+                    serial: tokens[..index].join(" "),
+                    state: "no permissions".to_owned(),
+                    model: None,
+                });
+            }
+            continue;
+        }
         let Some(state_index) = tokens.iter().position(|token| is_known_state(token)) else {
             continue;
         };
@@ -130,18 +143,25 @@ pub fn classify_devices(devices: &[AdbDevice]) -> DeviceSnapshot {
     let needs_authorization = devices
         .iter()
         .any(|device| matches!(device.state.as_str(), "unauthorized" | "authorizing"));
+    let needs_usb_access = devices
+        .iter()
+        .any(|device| device.state == "no permissions");
     DeviceSnapshot {
         kind: if needs_authorization {
             "unauthorized"
         } else {
             "unavailable"
         },
-        title: if needs_authorization {
+        title: if needs_usb_access {
+            "Allow USB access".to_owned()
+        } else if needs_authorization {
             "Approve this computer".to_owned()
         } else {
             "Devices unavailable".to_owned()
         },
-        message: if needs_authorization {
+        message: if needs_usb_access {
+            "Choose Set up USB access below, approve the administrator prompt, then reconnect your phone.".to_owned()
+        } else if needs_authorization {
             "Unlock the device and accept the USB debugging prompt.".to_owned()
         } else {
             "No connected device is ready. Reconnect USB and try again.".to_owned()
@@ -204,6 +224,18 @@ pub async fn get_device_status(app: AppHandle) -> DeviceSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn detects_linux_usb_permissions_without_hiding_the_phone() {
+        let output = "List of devices attached\nphone-one no permissions (user in plugdev group; are your udev rules wrong?); see [http://developer.android.com/tools/device.html] usb:1-2\n";
+        let devices = parse_adb_devices(output);
+        assert_eq!(devices.len(), 1);
+        assert_eq!(devices[0].serial, "phone-one");
+        assert_eq!(devices[0].state, "no permissions");
+        let snapshot = classify_devices(&devices);
+        assert_eq!(snapshot.ready_count, 0);
+        assert_eq!(snapshot.title, "Allow USB access");
+    }
 
     #[test]
     fn parses_authorized_device_and_model() {

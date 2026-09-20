@@ -8,7 +8,15 @@ use std::sync::{Mutex, OnceLock};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager};
 
-const REQUIRED_FILES: [&str; 3] = ["scrcpy.exe", "adb.exe", "scrcpy-server"];
+#[cfg(windows)]
+const SCRCPY: &str = "scrcpy.exe";
+#[cfg(not(windows))]
+const SCRCPY: &str = "scrcpy";
+#[cfg(windows)]
+const ADB: &str = "adb.exe";
+#[cfg(not(windows))]
+const ADB: &str = "adb";
+const REQUIRED_FILES: [&str; 3] = [SCRCPY, ADB, "scrcpy-server"];
 const OUTDATED_BACKEND_ERROR: &str = "Backend is outdated. Rebuild or restage Scrcpy GO backend.";
 
 static VALIDATED_BACKENDS: OnceLock<Mutex<HashMap<PathBuf, Result<(), String>>>> = OnceLock::new();
@@ -25,8 +33,8 @@ impl BackendPaths {
     fn from_directory(directory: PathBuf) -> Result<Self, String> {
         validate_backend_dir(&directory)?;
         Ok(Self {
-            scrcpy: directory.join("scrcpy.exe"),
-            adb: directory.join("adb.exe"),
+            scrcpy: directory.join(SCRCPY),
+            adb: directory.join(ADB),
             server: directory.join("scrcpy-server"),
             directory,
         })
@@ -88,7 +96,7 @@ fn hide_console(command: &mut Command) {
 fn hide_console(_command: &mut Command) {}
 
 fn validate_backend_version(directory: &Path) -> Result<(), String> {
-    let mut command = Command::new(directory.join("scrcpy.exe"));
+    let mut command = Command::new(directory.join(SCRCPY));
     command
         .arg("--help")
         .current_dir(directory)
@@ -139,7 +147,11 @@ fn repository_fallback() -> PathBuf {
         .expect("src-tauri must remain under gui/scrcpy-go")
         .join("release")
         .join("work")
-        .join("build-win64")
+        .join(if cfg!(windows) {
+            "build-win64"
+        } else {
+            "build-linux-x86_64"
+        })
         .join("dist")
 }
 
@@ -187,10 +199,10 @@ mod tests {
     fn reports_missing_backend_files() {
         let directory = temporary_directory();
         fs::create_dir_all(&directory).unwrap();
-        fs::write(directory.join("adb.exe"), []).unwrap();
+        fs::write(directory.join(ADB), []).unwrap();
 
         let error = validate_required_files(&directory).unwrap_err();
-        assert!(error.contains("scrcpy.exe"));
+        assert!(error.contains(SCRCPY));
         assert!(error.contains("scrcpy-server"));
         fs::remove_dir_all(directory).unwrap();
     }

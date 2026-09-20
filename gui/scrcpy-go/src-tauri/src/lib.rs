@@ -1,5 +1,6 @@
 mod backend;
 mod devices;
+mod linux_setup;
 mod process;
 
 use process::LauncherState;
@@ -10,6 +11,8 @@ pub fn run() {
         .manage(LauncherState::default())
         .invoke_handler(tauri::generate_handler![
             devices::get_device_status,
+            linux_setup::supports_usb_setup,
+            linux_setup::setup_usb,
             process::launch_scrcpy,
             process::stop_scrcpy
         ])

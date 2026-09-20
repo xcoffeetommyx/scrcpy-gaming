@@ -1,0 +1,19 @@
+{
+  "bundle": {
+    "targets": ["deb", "appimage"],
+    "category": "Utility",
+    "shortDescription": "Play and mirror your Android phone on your desktop",
+    "resources": {
+      "linux/setup-usb.sh": "linux/setup-usb.sh"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["udev", "policykit-1"],
+        "files": {
+          "/usr/lib/udev/rules.d/70-scrcpy-go.rules": "linux/70-scrcpy-go.rules"
+        },
+        "postInstallScript": "linux/postinst"
+      }
+    }
+  }
+}
