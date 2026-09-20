@@ -78,7 +78,9 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --locked --release
       - name: Package the graphical Linux app
         working-directory: gui/scrcpy-go
-        run: npm run tauri build -- --bundles deb,appimage
+        run: |
+          npm run tauri build -- --bundles deb,appimage
+          bash scripts/finalize-appimage.sh
       - name: Verify package contents and launch
         run: |
           bash gui/scrcpy-go/scripts/check-linux-package.sh
@@ -112,7 +114,7 @@ jobs:
       - name: Install the DEB and test both Linux downloads
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb dbus-x11 imagemagick
+          sudo apt-get install -y xvfb dbus-x11 imagemagick x11-utils
           package=$(find "$PWD/packages" -name '*.deb' -print -quit)
           sudo apt-get install -y "$package"
           mkdir -p screenshots

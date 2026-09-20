@@ -51,6 +51,9 @@ For local builds, install the Linux dependencies listed in
 Build `release/build_linux.sh x86_64` and the Android server, then copy the
 server APK to `release/work/build-linux-x86_64/dist/scrcpy-server`.
 From `gui/scrcpy-go`, run `npm ci` and `npm run tauri build`.
+Then run `bash scripts/finalize-appimage.sh` to keep the AppImage's graphics
+driver dependencies compatible with newer desktops. This uses Tauri's cached
+AppImage packaging tool and removes the stale bundled Wayland client library.
 The cross-platform staging script validates and bundles that backend. Use
 `SCRCPY_GO_BACKEND_DIR` to supply a different distribution directory.
 

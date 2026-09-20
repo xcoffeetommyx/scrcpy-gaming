@@ -18,3 +18,7 @@ xwininfo -root -tree | tee "$output/$name-windows.txt"
 grep -q 'Scrcpy GO' "$output/$name-windows.txt"
 import -window root "$output/$name.png"
 cat "$output/$name.log"
+if grep -Eqi 'Aborting|EGL_BAD|failed to create.*display|WebKitWebProcess.*(crash|error)' "$output/$name.log"; then
+    echo "$name reported a webview rendering failure" >&2
+    exit 1
+fi
