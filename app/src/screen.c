@@ -498,6 +498,8 @@ sc_screen_init(struct sc_screen *screen,
     screen->window_aspect_ratio_lock = params->window_aspect_ratio_lock;
     screen->render_fit = params->render_fit;
     screen->flex_display = params->flex_display;
+    screen->fullscreen_exclusive = params->fullscreen_exclusive;
+    screen->fullscreen_refresh_rate = params->fullscreen_refresh_rate;
 
     screen->bg.r = (params->background_color >> 16) & 0xFF;
     screen->bg.g = (params->background_color >> 8) & 0xFF;
@@ -585,6 +587,14 @@ sc_screen_init(struct sc_screen *screen,
         goto error_destroy_window;
     }
 
+    if (params->render_vsync) {
+        if (SDL_SetRenderVSync(screen->renderer, 1)) {
+            LOGI("Presentation VSync: enabled");
+        } else {
+            LOGW("Could not enable presentation VSync: %s", SDL_GetError());
+        }
+    }
+
 #ifdef SC_DISPLAY_FORCE_OPENGL_CORE_PROFILE
     screen->gl_context = NULL;
 
@@ -609,7 +619,7 @@ sc_screen_init(struct sc_screen *screen,
     }
 #endif
 
-    bool mipmaps = params->video;
+    bool mipmaps = params->video && params->mipmaps;
     ok = sc_texture_init(&screen->tex, screen->renderer, mipmaps);
     if (!ok) {
         goto error_destroy_renderer;
@@ -917,8 +927,6 @@ sc_screen_apply_frame(struct sc_screen *screen, bool can_resize) {
     assert(screen->video);
     assert(screen->window_shown);
 
-    sc_fps_counter_add_rendered_frame(&screen->fps_counter);
-
     AVFrame *frame = screen->frame;
     struct sc_size new_frame_size = {frame->width, frame->height};
 
@@ -951,6 +959,8 @@ sc_screen_apply_frame(struct sc_screen *screen, bool can_resize) {
     }
 
     sc_screen_render(screen, false);
+    // Measure completed presentations rather than texture upload attempts.
+    sc_fps_counter_add_rendered_frame(&screen->fps_counter);
     return true;
 }
 
@@ -1022,7 +1032,30 @@ sc_screen_toggle_fullscreen(struct sc_screen *screen) {
     bool req_fullscreen =
         !(SDL_GetWindowFlags(screen->window) & SDL_WINDOW_FULLSCREEN);
 
+    if (req_fullscreen && screen->fullscreen_exclusive) {
+        SDL_DisplayID display = SDL_GetDisplayForWindow(screen->window);
+        const SDL_DisplayMode *desktop = SDL_GetDesktopDisplayMode(display);
+        SDL_DisplayMode mode;
+        if (desktop
+                && SDL_GetClosestFullscreenDisplayMode(display, desktop->w,
+                    desktop->h, screen->fullscreen_refresh_rate, true, &mode)
+                && SDL_SetWindowFullscreenMode(screen->window, &mode)) {
+            LOGI("Exclusive fullscreen requested: %dx%d at %.2f Hz",
+                 mode.w, mode.h, (double) mode.refresh_rate);
+        } else {
+            LOGW("Exclusive fullscreen unavailable: %s; using borderless",
+                 SDL_GetError());
+            SDL_SetWindowFullscreenMode(screen->window, NULL);
+        }
+    }
+
     bool ok = SDL_SetWindowFullscreen(screen->window, req_fullscreen);
+    if (!ok && req_fullscreen && screen->fullscreen_exclusive) {
+        LOGW("Exclusive fullscreen failed: %s; trying borderless",
+             SDL_GetError());
+        SDL_SetWindowFullscreenMode(screen->window, NULL);
+        ok = SDL_SetWindowFullscreen(screen->window, true);
+    }
     if (!ok) {
         LOGW("Could not switch fullscreen mode: %s", SDL_GetError());
         return;
@@ -1175,12 +1208,20 @@ sc_screen_handle_event(struct sc_screen *screen, const SDL_Event *event) {
                 sc_screen_render(screen, true);
             }
             return;
-        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-            LOGD("Switched to fullscreen mode");
+        case SDL_EVENT_WINDOW_ENTER_FULLSCREEN: {
+            const SDL_DisplayMode *mode =
+                SDL_GetWindowFullscreenMode(screen->window);
+            if (mode) {
+                LOGI("Exclusive fullscreen active: %dx%d at %.2f Hz",
+                     mode->w, mode->h, (double) mode->refresh_rate);
+            } else {
+                LOGI("Borderless fullscreen active");
+            }
             assert(screen->video);
             return;
+        }
         case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-            LOGD("Switched to windowed mode");
+            LOGI("Windowed mode restored");
             assert(screen->video);
             if (is_windowed(screen)) {
                 apply_pending_resize(screen);

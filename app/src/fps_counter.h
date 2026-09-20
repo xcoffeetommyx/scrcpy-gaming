@@ -25,6 +25,10 @@ struct sc_fps_counter {
     unsigned nr_rendered;
     unsigned nr_skipped;
     sc_tick next_timestamp;
+    sc_tick last_frame_timestamp;
+    sc_tick frame_interval_sum;
+    sc_tick frame_interval_max;
+    unsigned frame_interval_count;
 };
 
 bool

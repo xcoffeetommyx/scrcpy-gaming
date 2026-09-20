@@ -299,6 +299,9 @@ struct scrcpy_options {
 #endif
     bool show_touches;
     bool fullscreen;
+    bool fullscreen_exclusive;
+    uint16_t fullscreen_refresh_rate;
+    bool render_vsync;
     bool always_on_top;
     bool control;
     bool video_playback;

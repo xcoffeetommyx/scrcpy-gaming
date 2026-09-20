@@ -10,6 +10,83 @@ client. It does not replace or embed scrcpy's video and input engine.
 Each device has an independent mirroring session. You may switch the device
 selector and launch or stop another device without closing existing sessions.
 
+## Gaming display modes
+
+Choose a connected device, a performance profile, and a **Display mode**:
+
+- **Phone native** mirrors the physical screen with the profile's usual stream
+  resolution cap.
+- **16:9 Gaming** creates a 1920 × 1080 Android virtual display.
+- **16:9 Performance** creates a 1280 × 720 Android virtual display.
+- **Custom resolution** creates a display with your chosen width and height
+  (320–8192 pixels per dimension, in multiples of 8).
+
+Virtual modes change the Android render target using `--new-display`, so apps
+can render at the selected aspect ratio. They do not stretch the image or change
+the physical phone's resolution. The launcher passes `--max-size=0` to override
+the gaming profile's longest-edge cap, and `--keep-active` to keep the virtual
+display awake. Profile frame-rate, bitrate, audio, and controller settings still
+apply. Larger displays need more GPU and encoder capacity; a frame-rate target
+is not guaranteed.
+
+The optional **Start an app** field accepts an installed Android package name.
+Leave it blank to use the device's virtual-display launcher. Some phones do not
+provide one: if the display stays blank, stop the session and enter an app's
+package name. There are no game-specific shortcuts. Apps and Android versions
+vary in virtual-display support, orientation, and controller focus; use Phone
+native if an app cannot run correctly on a separate display.
+
+Settings are independent per device for the current launcher session. Stop
+mirroring before changing them. Save your game first: scrcpy destroys the
+virtual display and its running apps when the display closes.
+
+## Phone screen off
+
+**Phone screen → Off while streaming** (default) turns off the physical panel
+while keeping the stream active. Unlock the phone before starting. This is
+screen blanking, not PIN/fingerprint locking: the phone remains unlocked.
+The launcher passes `--turn-screen-off --stay-awake`; the latter prevents
+automatic sleep while charging, and scrcpy restores the charging sleep setting
+and physical panel on exit. Virtual displays also retain `--keep-active`.
+
+Use **Leave on** to opt out. During a session, **Alt+O** turns the phone panel
+off and **Alt+Shift+O** turns it back on. These shortcuts do not change the
+preference for the next launch. The physical power button invokes Android's
+normal sleep/lock behavior, which may suspend the virtual display too. This
+was observed on the connected Samsung S23+ running Android 16; panel-only
+screen off kept its virtual display playing while the physical panel was off.
+
+## Fullscreen and frame pacing
+
+**Window mode** offers Windowed, Borderless fullscreen, and Exclusive fullscreen.
+Exclusive mode uses SDL's explicit monitor display mode at the desktop resolution.
+Smooth modes request a matching 60 or 120 Hz refresh rate; SDL chooses the closest
+supported mode. The actual resolution/rate is written to Activity. Alt+F leaves
+or re-enters fullscreen, and leaving restores the desktop mode. Unsupported
+exclusive mode falls back to borderless with a warning. Windows/driver fullscreen
+optimizations may still affect how fullscreen is presented.
+
+**Frame pacing** is independent of the image/audio profile:
+
+- **Smooth 60 FPS** (default): 60 FPS capture cap, 35 ms timestamp-based video
+  buffer, and presentation VSync. Start here for games capped at 60 FPS.
+- **Smooth 120 FPS**: 120 FPS cap, 20 ms video buffer, and VSync. Requires a game,
+  Android display, encoder, and monitor capable of delivering that rate.
+- **Minimum latency**: up to 120 FPS, no video buffer, and default VSync-off
+  presentation. This preserves the original low-latency behavior.
+
+The buffer absorbs delivery jitter at the cost of its configured delay. VSync
+may add more delay. Match the in-game frame cap to the selected mode. In windowed
+or borderless mode, use a monitor refresh rate equal to or an integer multiple
+of that cap (for example, 60 FPS on a 60/120 Hz monitor). A video buffer cannot
+repair slow game frames, encoder stalls, or sustained transport/decoder overload.
+
+The session reports average and longest frame intervals over the last second,
+measured after the client's presentation calls return. These help reveal uneven
+delivery hidden by an FPS average; they do not measure actual monitor scanout or
+end-to-end input latency. Static screens, startup, and app loading naturally
+produce long intervals. Compare steady motion after the game has loaded.
+
 Launcher sessions enable scrcpy's FPS counter and show a live per-device
 rendered FPS and skipped-frame sample. Counter lines are kept out of the
 activity log so that useful startup and controller diagnostics are not pushed
@@ -56,8 +133,8 @@ For a distribution in another location:
 ```
 
 Staged binaries are generated content and are ignored by Git.
-The staging script runs `scrcpy.exe --help` and rejects a backend that does not
-support `--game-mode-profile`.
+The staging script runs `scrcpy.exe --help` and rejects a backend missing the
+game profile, exclusive fullscreen, or presentation VSync flags.
 
 During development, the launcher resolves the backend in this order:
 
@@ -95,6 +172,14 @@ the distribution is missing or outdated.
 
 Tauri produces the configured NSIS installer under
 `src-tauri/target/release/bundle/nsis`.
+
+Installer and uninstaller hooks release the bundled backend before replacing
+or removing files. ADB's background server can remain alive after the launcher
+closes and lock `AdbWinApi.dll`. The hook closes the launcher first, then stops
+only `adb.exe` and `scrcpy.exe` processes whose executable paths match this
+installation's `backend` directory. ADB processes from other SDKs or scrcpy
+installations are left alone. Save games before upgrading because active
+mirroring sessions will close.
 
 The launcher, browser favicon, and installer icons use `assets/icon.svg` as
 their source. After editing it, regenerate the packaged platform icons with

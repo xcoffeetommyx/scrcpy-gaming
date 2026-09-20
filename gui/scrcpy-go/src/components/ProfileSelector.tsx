@@ -3,12 +3,16 @@ import type { Profile } from "../types";
 
 interface ProfileSelectorProps {
   selected: Profile;
+  resolution?: string;
+  targetFps?: number;
   disabled: boolean;
   onChange: (profile: Profile) => void;
 }
 
 export function ProfileSelector({
   selected,
+  resolution,
+  targetFps = 60,
   disabled,
   onChange,
 }: ProfileSelectorProps) {
@@ -20,7 +24,7 @@ export function ProfileSelector({
           <span className="panel-kicker">Performance</span>
           <h2>Choose a profile</h2>
         </div>
-        <span className="panel-meta">120 FPS target</span>
+        <span className="panel-meta">{targetFps} FPS target</span>
       </header>
 
       <div className="profile-list">
@@ -47,7 +51,7 @@ export function ProfileSelector({
                   {profile.description}
                 </span>
                 <span className="profile-card__metrics">
-                  {profile.specs.slice(1).map((spec) => (
+                  {[resolution ?? profile.specs[1], ...profile.specs.slice(2)].map((spec) => (
                     <span key={spec}>{spec}</span>
                   ))}
                 </span>

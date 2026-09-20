@@ -373,6 +373,33 @@ static void test_parse_shortcut_mods(void) {
     assert(!ok);
 }
 
+static void test_fullscreen_and_pacing(void) {
+    struct scrcpy_cli_args args = { .opts = scrcpy_options_default };
+    char *argv[] = {"scrcpy", "--game-mode-profile=balanced",
+        "--fullscreen-exclusive", "--fullscreen-refresh-rate=60",
+        "--render-vsync", "--max-fps=60", "--video-buffer=35"};
+    assert(scrcpy_parse_args(&args, ARRAY_LEN(argv), argv));
+    assert(args.opts.fullscreen);
+    assert(args.opts.fullscreen_exclusive);
+    assert(args.opts.fullscreen_refresh_rate == 60);
+    assert(args.opts.render_vsync);
+    assert(!strcmp(args.opts.max_fps, "60"));
+    assert(args.opts.video_buffer == SC_TICK_FROM_MS(35));
+
+    struct scrcpy_cli_args borderless = { .opts = scrcpy_options_default };
+    char *borderless_argv[] = {"scrcpy", "--fullscreen"};
+    assert(scrcpy_parse_args(&borderless, ARRAY_LEN(borderless_argv), borderless_argv));
+    assert(borderless.opts.fullscreen);
+    assert(!borderless.opts.fullscreen_exclusive);
+    assert(!borderless.opts.render_vsync);
+
+    struct scrcpy_cli_args invalid = { .opts = scrcpy_options_default };
+    char *invalid_argv[] = {"scrcpy", "--fullscreen-refresh-rate=60"};
+    assert(!scrcpy_parse_args(&invalid, ARRAY_LEN(invalid_argv), invalid_argv));
+    char *zero_argv[] = {"scrcpy", "--fullscreen-exclusive", "--fullscreen-refresh-rate=0"};
+    assert(!scrcpy_parse_args(&invalid, ARRAY_LEN(zero_argv), zero_argv));
+}
+
 int main(int argc, char *argv[]) {
     (void) argc;
     (void) argv;
@@ -381,6 +408,7 @@ int main(int argc, char *argv[]) {
     test_flag_help();
     test_options();
     test_options2();
+    test_fullscreen_and_pacing();
     test_game_mode();
     test_game_mode_overrides();
     test_game_mode_with_uhid_keyboard();

@@ -39,6 +39,8 @@ struct sc_screen {
     bool camera;
     bool window_aspect_ratio_lock;
     bool flex_display;
+    bool fullscreen_exclusive;
+    uint16_t fullscreen_refresh_rate;
 
     struct sc_controller *controller;
 
@@ -144,6 +146,9 @@ struct sc_screen_params {
 
     bool fullscreen;
     bool start_fps_counter;
+    bool fullscreen_exclusive;
+    uint16_t fullscreen_refresh_rate;
+    bool render_vsync;
 };
 
 // initialize screen, create window, renderer and texture (window is hidden)

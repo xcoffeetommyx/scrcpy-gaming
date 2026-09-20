@@ -1,5 +1,13 @@
 export type Profile = "competitive" | "balanced" | "quality";
 
+export type DisplayMode = "native" | "gaming1080" | "performance720" | "custom";
+export type WindowMode = "windowed" | "borderless" | "exclusive";
+export type FramePacing = "smooth60" | "smooth120" | "lowLatency";
+
+export type DisplayRequest =
+  | { mode: Exclude<DisplayMode, "custom"> }
+  | { mode: "custom"; width: number; height: number };
+
 export type DeviceState =
   | "noDevice"
   | "connected"
@@ -25,6 +33,11 @@ export interface DeviceSnapshot {
 export interface LaunchRequest {
   serial: string;
   profile: Profile;
+  display: DisplayRequest;
+  startApp: string | null;
+  windowMode: WindowMode;
+  framePacing: FramePacing;
+  phoneScreenOff: boolean;
 }
 
 export interface LaunchResult {
@@ -50,4 +63,6 @@ export interface PerformanceEvent {
   pid: number;
   renderedFps: number;
   skippedFrames: number;
+  averageFrameMs?: number | null;
+  longestFrameMs?: number | null;
 }

@@ -64,8 +64,10 @@ if ($exitCode -ne 0) {
     throw "Backend validation failed: scrcpy.exe --help exited with code $exitCode."
 }
 
-if ($help -notmatch [regex]::Escape("--game-mode-profile")) {
-    throw "Backend is outdated. Build the current scrcpy backend before staging. Missing --game-mode-profile."
+foreach ($flag in @("--game-mode-profile", "--fullscreen-exclusive", "--render-vsync")) {
+    if ($help -notmatch [regex]::Escape($flag)) {
+        throw "Backend is outdated. Build the current scrcpy backend before staging. Missing $flag."
+    }
 }
 
 New-Item -ItemType Directory -Path $Destination -Force | Out-Null

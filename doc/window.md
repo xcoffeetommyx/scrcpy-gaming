@@ -1,5 +1,25 @@
 # Window
 
+## Exclusive fullscreen (gaming fork)
+
+`--fullscreen-exclusive` starts in a monitor display mode, while `--fullscreen`
+uses borderless desktop fullscreen. Alt+F toggles back to a window. Exclusive
+mode keeps the desktop resolution and can request a refresh rate with
+`--fullscreen-refresh-rate=60` (or `120`). Unsupported modes fall back to
+borderless with a warning; the selected mode is logged.
+
+For 60 FPS games, try:
+
+```sh
+scrcpy --game-mode-profile=balanced --new-display=1920x1080 --max-size=0 \
+  --max-fps=60 --video-buffer=35 --render-vsync \
+  --fullscreen-exclusive --fullscreen-refresh-rate=60
+```
+
+The video buffer adds 35 ms to smooth delivery jitter. `--render-vsync` enables
+monitor-synchronized presentation. The desktop mode is restored when leaving
+fullscreen. OS and driver fullscreen optimizations still apply.
+
 ## Disable window
 
 To disable window (may be useful for recording or for playing audio only):

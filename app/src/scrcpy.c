@@ -791,6 +791,9 @@ aoa_complete:
             .orientation = options->display_orientation,
             .mipmaps = options->mipmaps,
             .fullscreen = options->fullscreen,
+            .fullscreen_exclusive = options->fullscreen_exclusive,
+            .fullscreen_refresh_rate = options->fullscreen_refresh_rate,
+            .render_vsync = options->render_vsync,
             .start_fps_counter = options->start_fps_counter,
         };
 

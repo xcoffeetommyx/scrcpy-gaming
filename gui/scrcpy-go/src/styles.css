@@ -623,6 +623,69 @@ button {
   transform: scale(1);
 }
 
+.display-panel {
+  margin-top: 14px;
+}
+
+.display-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.display-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.display-field input,
+.display-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  background: var(--control);
+}
+
+.display-field input:focus-visible,
+.display-field select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.display-panel:disabled .display-fields {
+  opacity: 0.65;
+}
+
+.display-dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.display-hint,
+.display-error {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.display-error {
+  color: var(--amber);
+}
+
+.display-error:empty {
+  display: none;
+}
+
 .session-panel {
   display: flex;
   min-height: 96px;
@@ -1007,6 +1070,14 @@ button {
 }
 
 @media (max-width: 560px) {
+  .display-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .session-panel__heading {
+    flex-wrap: wrap;
+  }
+
   .app-shell {
     padding: 20px 16px;
   }

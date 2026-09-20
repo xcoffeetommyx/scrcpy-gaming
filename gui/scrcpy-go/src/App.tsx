@@ -5,6 +5,8 @@ import brandIcon from "../assets/icon.svg";
 import { DeviceStatusCard } from "./components/DeviceStatusCard";
 import { LogPanel } from "./components/LogPanel";
 import { ProfileSelector } from "./components/ProfileSelector";
+import { DisplaySelector } from "./components/DisplaySelector";
+import { DEFAULT_DISPLAY, displayError, displayRequest, displaySummary, type DisplaySettings } from "./display";
 import {
   chooseDeviceSerial,
   formatDeviceName,
@@ -63,6 +65,7 @@ export default function App() {
   const [profiles, setProfiles] = useState<Map<string, Profile>>(
     () => new Map(),
   );
+  const [displays, setDisplays] = useState<Map<string, DisplaySettings>>(() => new Map());
   const [sessions, setSessions] = useState<Map<string, number>>(
     () => new Map(),
   );
@@ -181,6 +184,9 @@ export default function App() {
     ? profiles.get(selectedSerial) ?? "balanced"
     : "balanced";
   const activeSessionCount = sessions.size;
+  const display = displays.get(selectedSerial ?? "") ?? DEFAULT_DISPLAY;
+  const invalidDisplay = displayError(display);
+  const targetFps = display.framePacing === "smooth60" ? 60 : 120;
   const selectedPerformance = selectedSerial
     ? performance.get(selectedSerial)
     : undefined;
@@ -204,7 +210,8 @@ export default function App() {
       !selectedSerial ||
       !selectedDeviceReady ||
       selectedRunning ||
-      selectedBusy
+      selectedBusy ||
+      invalidDisplay
     ) {
       return;
     }
@@ -217,6 +224,7 @@ export default function App() {
     const request: LaunchRequest = {
       serial,
       profile,
+      ...displayRequest(display),
     };
 
     try {
@@ -239,7 +247,7 @@ export default function App() {
         serial,
         message: `Mirroring ${deviceName} in ${
           PROFILES.find((option) => option.id === profile)?.name ?? profile
-        } mode.`,
+        } mode · ${displaySummary(display)}.`,
       });
     } catch (error) {
       addLog({ source: "system", serial, message: friendlyError(error) });
@@ -269,7 +277,7 @@ export default function App() {
   };
 
   const launchDisabled =
-    !selectedDeviceReady || selectedRunning || selectedBusy || !selectedSerial;
+    !selectedDeviceReady || selectedRunning || selectedBusy || !selectedSerial || !!invalidDisplay;
   const selectedProfile =
     PROFILES.find((option) => option.id === profile)?.name ?? profile;
 
@@ -308,17 +316,29 @@ export default function App() {
 
         <ProfileSelector
           selected={profile}
+          resolution={display.mode === "native" ? undefined : displaySummary(display)}
+          targetFps={targetFps}
           disabled={!selectedSerial || selectedRunning || selectedBusy}
           onChange={selectProfile}
         />
       </section>
+
+      <DisplaySelector
+        settings={display}
+        disabled={!selectedSerial || selectedRunning || selectedBusy}
+        onChange={(settings) => {
+          if (selectedSerial) {
+            setDisplays((current) => new Map(current).set(selectedSerial, settings));
+          }
+        }}
+      />
 
       <section className="session-panel" aria-label="Launch controls">
         <div className="session-panel__copy">
           <span className="panel-kicker">Session</span>
           <div className="session-panel__heading">
             <strong>{selectedProfile}</strong>
-            <span>120 FPS target</span>
+            <span>{displaySummary(display)} · {targetFps} FPS target</span>
           </div>
           <p>
             {selectedRunning
@@ -331,10 +351,15 @@ export default function App() {
                         }`
                   } in the last second`
                 : "Session active · Measuring frame delivery…"
-              : launchDisabled
+              : invalidDisplay
+                ? "Check your display settings before starting."
+                : launchDisabled
                 ? "Select an authorized device to begin."
                 : `${selectedDevice ? formatDeviceName(selectedDevice) : "Device"} is ready over USB.`}
           </p>
+          {selectedRunning && currentPerformance?.averageFrameMs != null && (
+            <p>Frame intervals: {currentPerformance.averageFrameMs.toFixed(1)} ms average · {currentPerformance.longestFrameMs?.toFixed(1)} ms longest</p>
+          )}
         </div>
 
         <div className="launch-actions">

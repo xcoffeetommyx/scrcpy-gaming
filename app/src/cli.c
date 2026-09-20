@@ -115,6 +115,9 @@ enum {
     OPT_GAME_MODE_PROFILE,
     OPT_IGNORE_VIDEO_ENCODER_CONSTRAINTS,
     OPT_NO_TERMINAL_TITLE,
+    OPT_FULLSCREEN_EXCLUSIVE,
+    OPT_FULLSCREEN_REFRESH_RATE,
+    OPT_RENDER_VSYNC,
 };
 
 enum sc_game_mode_profile {
@@ -412,6 +415,27 @@ static const struct sc_option options[] = {
         .shortopt = 'f',
         .longopt = "fullscreen",
         .text = "Start in fullscreen.",
+    },
+    {
+        .longopt_id = OPT_FULLSCREEN_EXCLUSIVE,
+        .longopt = "fullscreen-exclusive",
+        .text = "Start in exclusive fullscreen using a monitor display mode. "
+                "MOD+f toggles back to windowed mode. If unsupported, "
+                "fall back to borderless fullscreen with a warning.",
+    },
+    {
+        .longopt_id = OPT_FULLSCREEN_REFRESH_RATE,
+        .longopt = "fullscreen-refresh-rate",
+        .argdesc = "hz",
+        .text = "Preferred exclusive fullscreen refresh rate (1-1000 Hz). "
+                "Uses the closest supported rate at the desktop resolution. "
+                "Requires --fullscreen-exclusive. Default is the desktop rate.",
+    },
+    {
+        .longopt_id = OPT_RENDER_VSYNC,
+        .longopt = "render-vsync",
+        .text = "Synchronize presentation with the monitor refresh. Combine "
+                "with --video-buffer to absorb frame delivery jitter.",
     },
     {
         .longopt_id = OPT_FORCE_ADB_FORWARD,
@@ -2604,6 +2628,22 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
             case 'f':
                 opts->fullscreen = true;
                 break;
+            case OPT_FULLSCREEN_EXCLUSIVE:
+                opts->fullscreen = true;
+                opts->fullscreen_exclusive = true;
+                break;
+            case OPT_FULLSCREEN_REFRESH_RATE: {
+                long value;
+                if (!parse_integer_arg(optarg, &value, false, 1, 1000,
+                                       "fullscreen refresh rate")) {
+                    return false;
+                }
+                opts->fullscreen_refresh_rate = (uint16_t) value;
+                break;
+            }
+            case OPT_RENDER_VSYNC:
+                opts->render_vsync = true;
+                break;
             case OPT_RECORD_FORMAT:
                 if (!parse_record_format(optarg, &opts->record_format)) {
                     return false;
@@ -3060,6 +3100,11 @@ parse_args_with_getopt(struct scrcpy_cli_args *args, int argc, char *argv[],
     int index = optind;
     if (index < argc) {
         LOGE("Unexpected additional argument: %s", argv[index]);
+        return false;
+    }
+
+    if (opts->fullscreen_refresh_rate && !opts->fullscreen_exclusive) {
+        LOGE("--fullscreen-refresh-rate requires --fullscreen-exclusive");
         return false;
     }
 

@@ -80,6 +80,9 @@ const struct scrcpy_options scrcpy_options_default = {
 #endif
     .show_touches = false,
     .fullscreen = false,
+    .fullscreen_exclusive = false,
+    .fullscreen_refresh_rate = 0,
+    .render_vsync = false,
     .always_on_top = false,
     .control = true,
     .video_playback = true,

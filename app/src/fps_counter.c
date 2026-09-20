@@ -48,7 +48,13 @@ static void
 display_fps(struct sc_fps_counter *counter) {
     unsigned rendered_per_second =
         counter->nr_rendered * SC_TICK_FREQ / SC_FPS_COUNTER_INTERVAL;
-    if (counter->nr_skipped) {
+    if (counter->frame_interval_count) {
+        double avg_ms = 1000.0 * counter->frame_interval_sum
+                      / SC_TICK_FREQ / counter->frame_interval_count;
+        double max_ms = 1000.0 * counter->frame_interval_max / SC_TICK_FREQ;
+        LOGI("%u fps (+%u frames skipped) [frame-time avg=%.2f max=%.2f ms]",
+             rendered_per_second, counter->nr_skipped, avg_ms, max_ms);
+    } else if (counter->nr_skipped) {
         LOGI("%u fps (+%u frames skipped)", rendered_per_second,
                                             counter->nr_skipped);
     } else {
@@ -66,6 +72,9 @@ check_interval_expired(struct sc_fps_counter *counter, sc_tick now) {
     display_fps(counter);
     counter->nr_rendered = 0;
     counter->nr_skipped = 0;
+    counter->frame_interval_sum = 0;
+    counter->frame_interval_max = 0;
+    counter->frame_interval_count = 0;
     // add a multiple of the interval
     uint32_t elapsed_slices =
         (now - counter->next_timestamp) / SC_FPS_COUNTER_INTERVAL + 1;
@@ -101,6 +110,10 @@ sc_fps_counter_start(struct sc_fps_counter *counter) {
     counter->next_timestamp = sc_tick_now() + SC_FPS_COUNTER_INTERVAL;
     counter->nr_rendered = 0;
     counter->nr_skipped = 0;
+    counter->last_frame_timestamp = 0;
+    counter->frame_interval_sum = 0;
+    counter->frame_interval_max = 0;
+    counter->frame_interval_count = 0;
     sc_mutex_unlock(&counter->mutex);
 
     set_started(counter, true);
@@ -169,6 +182,15 @@ sc_fps_counter_add_rendered_frame(struct sc_fps_counter *counter) {
     sc_tick now = sc_tick_now();
     check_interval_expired(counter, now);
     ++counter->nr_rendered;
+    if (counter->last_frame_timestamp) {
+        sc_tick interval = now - counter->last_frame_timestamp;
+        counter->frame_interval_sum += interval;
+        if (interval > counter->frame_interval_max) {
+            counter->frame_interval_max = interval;
+        }
+        ++counter->frame_interval_count;
+    }
+    counter->last_frame_timestamp = now;
     sc_mutex_unlock(&counter->mutex);
 }
 

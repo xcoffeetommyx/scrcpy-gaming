@@ -63,7 +63,14 @@ fn validate_required_files(directory: &Path) -> Result<(), String> {
 }
 
 fn validate_help_output(output: &str) -> Result<(), String> {
-    if output.contains("--game-mode-profile") {
+    if [
+        "--game-mode-profile",
+        "--fullscreen-exclusive",
+        "--render-vsync",
+    ]
+    .iter()
+    .all(|flag| output.contains(flag))
+    {
         Ok(())
     } else {
         Err(OUTDATED_BACKEND_ERROR.to_owned())
@@ -190,7 +197,11 @@ mod tests {
 
     #[test]
     fn accepts_backend_with_game_mode_profiles() {
-        assert!(validate_help_output("  --game-mode-profile=competitive|balanced|quality").is_ok());
+        assert!(
+            validate_help_output("--game-mode-profile --fullscreen-exclusive --render-vsync")
+                .is_ok()
+        );
+        assert!(validate_help_output("--game-mode-profile").is_err());
     }
 
     #[test]
