@@ -1,11 +1,12 @@
 {
   "bundle": {
     "targets": ["deb", "appimage"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png"],
     "category": "Utility",
     "shortDescription": "Play and mirror your Android phone on your desktop",
     "linux": {
       "deb": {
-        "depends": ["udev", "policykit-1"],
+        "depends": ["udev", "pkexec"],
         "files": {
           "/usr/lib/udev/rules.d/70-scrcpy-go.rules": "linux/70-scrcpy-go.rules"
         },

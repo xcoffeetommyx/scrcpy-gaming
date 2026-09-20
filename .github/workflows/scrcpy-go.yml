@@ -43,24 +43,39 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew -p server assembleRelease
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: backend-cache
         with:
           path: app/deps/work
           key: linux-backend-${{ runner.os }}-${{ hashFiles('app/deps/**.sh', 'app/deps/_init', 'app/deps/patches/**') }}
       - name: Build the bundled Linux client
+        id: backend
         run: |
           release/build_linux.sh x86_64
           cp server/build/outputs/apk/release/server-release-unsigned.apk release/work/build-linux-x86_64/dist/scrcpy-server
           bash gui/scrcpy-go/scripts/bundle-linux-libraries.sh
           release/work/build-linux-x86_64/dist/scrcpy --help | grep -- --fullscreen-exclusive
           release/work/build-linux-x86_64/dist/adb version
+      - uses: actions/cache/save@v4
+        if: steps.backend-cache.outputs.cache-hit != 'true'
+        with:
+          path: app/deps/work
+          key: ${{ steps.backend-cache.outputs.cache-primary-key }}
+      - uses: actions/cache/restore@v4
+        id: rust-cache
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gui/scrcpy-go/src-tauri/target
+          key: linux-rust-${{ hashFiles('gui/scrcpy-go/src-tauri/Cargo.lock') }}
       - name: Install frontend dependencies and test
         working-directory: gui/scrcpy-go
         run: |
           npm ci
           npm test
           npm run build
-          cargo test --manifest-path src-tauri/Cargo.toml --locked
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --release
       - name: Package the graphical Linux app
         working-directory: gui/scrcpy-go
         run: npm run tauri build -- --bundles deb,appimage
@@ -68,9 +83,47 @@ jobs:
         run: |
           bash gui/scrcpy-go/scripts/check-linux-package.sh
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: Scrcpy-GO-linux-x86_64
           path: |
             gui/scrcpy-go/src-tauri/target/release/bundle/deb/*.deb
             gui/scrcpy-go/src-tauri/target/release/bundle/appimage/*.AppImage
-          if-no-files-found: error
+          if-no-files-found: warn
+      - uses: actions/cache/save@v4
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gui/scrcpy-go/src-tauri/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+
+  ubuntu-24-install:
+    needs: linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: Scrcpy-GO-linux-x86_64
+          path: packages
+      - name: Install the DEB and test both Linux downloads
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb dbus-x11 imagemagick
+          package=$(find "$PWD/packages" -name '*.deb' -print -quit)
+          sudo apt-get install -y "$package"
+          mkdir -p screenshots
+          export SCRCPY_GO_SCREENSHOT_DIR="$PWD/screenshots"
+          xvfb-run -a -s '-screen 0 1280x1024x24' bash gui/scrcpy-go/scripts/smoke-linux-gui.sh /usr/bin/scrcpy-go deb
+          appimage=$(find "$PWD/packages" -name '*.AppImage' -print -quit)
+          chmod +x "$appimage"
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a -s '-screen 0 1280x1024x24' bash gui/scrcpy-go/scripts/smoke-linux-gui.sh "$appimage" appimage
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Linux-desktop-startup
+          path: screenshots
+          if-no-files-found: warn
