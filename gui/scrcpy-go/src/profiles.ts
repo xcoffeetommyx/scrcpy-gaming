@@ -12,23 +12,23 @@ export const PROFILES: readonly ProfileOption[] = [
   {
     id: "competitive",
     name: "Competitive",
-    eyebrow: "Lowest latency",
-    description: "Built for fast reactions and controller-first play.",
-    specs: ["120 FPS", "720 max", "2 Mbps", "Audio off"],
+    eyebrow: "Fastest",
+    description: "Minimum overhead for reaction-first play.",
+    specs: ["120 FPS", "720px cap", "2 Mbps", "Phone audio"],
   },
   {
     id: "balanced",
     name: "Balanced",
     eyebrow: "Recommended",
-    description: "Sharper motion without giving up the responsive feel.",
-    specs: ["120 FPS", "720 max", "6 Mbps", "Audio on · 40 ms buffer"],
+    description: "Responsive play with a cleaner image and PC audio.",
+    specs: ["120 FPS", "720px cap", "6 Mbps", "PC audio"],
   },
   {
     id: "quality",
     name: "Quality",
-    eyebrow: "More detail",
-    description: "A richer picture for games where detail matters most.",
-    specs: ["120 FPS", "1080 max", "12 Mbps", "Audio on · 40 ms buffer"],
+    eyebrow: "Sharpest",
+    description: "Maximum detail for games that reward clarity.",
+    specs: ["120 FPS", "1080px cap", "12 Mbps", "PC audio"],
   },
 ] as const;
 

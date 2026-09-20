@@ -17,10 +17,10 @@ describe("game mode profiles", () => {
 
   it("keeps audio disabled only for the competitive profile", () => {
     expect(PROFILES.find((profile) => profile.id === "competitive")?.specs)
-      .toContain("Audio off");
+      .toContain("Phone audio");
     expect(PROFILES.find((profile) => profile.id === "balanced")?.specs)
-      .toContain("Audio on · 40 ms buffer");
+      .toContain("PC audio");
     expect(PROFILES.find((profile) => profile.id === "quality")?.specs)
-      .toContain("Audio on · 40 ms buffer");
+      .toContain("PC audio");
   });
 });

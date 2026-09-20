@@ -44,50 +44,15 @@ export function DeviceStatusCard({
       : STATUS_LABELS[snapshot.kind];
 
   return (
-    <section className={`device-card state-${snapshot.kind}`} aria-live="polite">
-      <div className="device-card__content">
-        <div className="device-card__icon" aria-hidden="true">
-          <span className="phone-speaker" />
-          <span className="phone-screen" />
+    <section
+      className={`panel device-panel state-${snapshot.kind}`}
+      aria-live="polite"
+    >
+      <header className="panel-header">
+        <div>
+          <span className="panel-kicker">Device</span>
+          <h2>Connection</h2>
         </div>
-
-        <div className="device-card__copy">
-          <h2>{deviceName || snapshot.title}</h2>
-          <p>{snapshot.message}</p>
-          {showPicker && (
-            <label className="device-picker">
-              <span>Mirror device</span>
-              <select
-                value={selectedSerial ?? ""}
-                onChange={(event) => onSelect(event.target.value)}
-                disabled={snapshot.readyCount === 0}
-                aria-label="Device to mirror"
-              >
-                {!selectedSerial && (
-                  <option value="" disabled>
-                    Select a ready device
-                  </option>
-                )}
-                {snapshot.devices.map((device) => (
-                  <option
-                    key={device.serial}
-                    value={device.serial}
-                    disabled={!isReadyDevice(device)}
-                  >
-                    {formatDeviceOption(device)}
-                    {activeSessions.has(device.serial) ? " • Active" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-
-        <div className="device-state">
-          <span className="status-dot" />
-          {statusLabel}
-        </div>
-
         <button
           className="icon-button"
           type="button"
@@ -105,7 +70,70 @@ export function DeviceStatusCard({
             <path d="M6.1 8.1A7 7 0 0 1 18.7 7M17.9 15.9A7 7 0 0 1 5.3 17" />
           </svg>
         </button>
+      </header>
+
+      <div className="device-overview">
+        <div className="device-glyph" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <rect x="11" y="4.5" width="18" height="31" rx="4" />
+            <path d="M17 8h6M18.5 31.5h3" />
+          </svg>
+        </div>
+        <div className="device-card__copy">
+          <div className="device-state">
+            <span className="status-dot" />
+            {statusLabel}
+          </div>
+          <h3>
+            {snapshot.kind === "connected"
+              ? deviceName || snapshot.title
+              : snapshot.title}
+          </h3>
+          <p>
+            {snapshot.kind === "adbError"
+              ? "Could not reach the device service. Check the installation and retry."
+              : snapshot.message}
+          </p>
+        </div>
       </div>
+
+      {showPicker ? (
+        <label className="device-picker">
+          <span>Mirror device</span>
+          <select
+            value={selectedSerial ?? ""}
+            onChange={(event) => onSelect(event.target.value)}
+            disabled={snapshot.readyCount === 0}
+            aria-label="Device to mirror"
+          >
+            {!selectedSerial && (
+              <option value="" disabled>
+                Select a ready device
+              </option>
+            )}
+            {snapshot.devices.map((device) => (
+              <option
+                key={device.serial}
+                value={device.serial}
+                disabled={!isReadyDevice(device)}
+              >
+                {formatDeviceOption(device)}
+                {activeSessions.has(device.serial) ? " • Active" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : snapshot.kind === "adbError" ? (
+        <details className="device-details">
+          <summary>Technical details</summary>
+          <p>{snapshot.message}</p>
+        </details>
+      ) : (
+        <div className="device-footer">
+          <span>{displayDevice ? "ADB serial" : "Connection"}</span>
+          <strong>{displayDevice?.serial ?? "USB debugging required"}</strong>
+        </div>
+      )}
     </section>
   );
 }

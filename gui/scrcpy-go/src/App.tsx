@@ -272,35 +272,30 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <header className="hero">
+      <header className="app-header">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
-            <span className="brand-mark__screen" />
-            <span className="brand-mark__signal" />
+            <svg viewBox="0 0 36 36">
+              <rect x="7.5" y="4.5" width="17" height="27" rx="4" />
+              <path d="M13 9h6M20 13l5 5-5 5M24.5 18H15" />
+            </svg>
           </div>
-          <div className="hero__title">
-            <h1>
-              Scrcpy <em>GO</em>
-            </h1>
-            <p>Gaming Optimized</p>
+          <div className="brand__copy">
+            <h1>Scrcpy GO</h1>
+            <p>Android gaming mirror</p>
           </div>
         </div>
         <div
-          className={`session-pill ${activeSessionCount ? "is-running" : ""}`}
+          className={`session-status ${activeSessionCount ? "is-running" : ""}`}
         >
-          <span />
+          <span className="status-dot" />
           {activeSessionCount
             ? `${activeSessionCount} session${activeSessionCount === 1 ? "" : "s"} active`
-            : "Ready to play"}
+            : "Idle"}
         </div>
       </header>
 
-      <section className="workspace">
-        <div className="section-title">
-          <h2>Device</h2>
-          <p>USB debugging required</p>
-        </div>
-
+      <section className="dashboard-grid" aria-label="Mirroring setup">
         <DeviceStatusCard
           snapshot={device}
           selectedSerial={selectedSerial}
@@ -315,83 +310,77 @@ export default function App() {
           disabled={!selectedSerial || selectedRunning || selectedBusy}
           onChange={selectProfile}
         />
+      </section>
 
-        <section className="launch-zone" aria-label="Launch controls">
-          <div className="launch-summary">
-            <span>
-              {selectedRunning
-                ? "Mirroring now"
-                : launchDisabled
-                  ? "Before you start"
-                  : "Ready to play"}
-            </span>
-            <strong>{selectedProfile} profile</strong>
-            <p>
-              {selectedRunning
-                ? currentPerformance
-                  ? `${currentPerformance.renderedFps} FPS live · ${
-                      currentPerformance.skippedFrames === 0
-                        ? "no skipped frames"
-                        : `${currentPerformance.skippedFrames} skipped frame${
-                            currentPerformance.skippedFrames === 1 ? "" : "s"
-                          }`
-                    } in the last second`
-                  : "Measuring frame delivery…"
-                : launchDisabled
-                  ? "Select an authorized device to continue."
-                  : "Your device and controller setup are ready."}
-            </p>
-          </div>
-
-          <div className="launch-actions">
-            {selectedRunning && (
-              <button
-                className="button button--stop"
-                type="button"
-                onClick={() => void stop()}
-                disabled={selectedBusy}
-              >
-                <span className="stop-square" />
-                Stop
-              </button>
-            )}
-            <button
-              className="button button--launch"
-              type="button"
-              onClick={() => void launch()}
-              disabled={launchDisabled}
-            >
-              <span className="button__label">
-                {selectedBusy
-                  ? "Working…"
-                  : selectedRunning
-                    ? "Running"
-                    : "GO"}
-              </span>
-              <span className="button__hint">
-                {selectedRunning ? "Session active" : "Start mirroring"}
-              </span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m9 6 6 6-6 6" />
-              </svg>
-            </button>
-          </div>
-        </section>
-
-        <aside className="controller-tip">
-          <div className="controller-icon" aria-hidden="true">
-            <span className="controller-dpad">+</span>
-            <span className="controller-buttons">••</span>
+      <section className="session-panel" aria-label="Launch controls">
+        <div className="session-panel__copy">
+          <span className="panel-kicker">Session</span>
+          <div className="session-panel__heading">
+            <strong>{selectedProfile}</strong>
+            <span>120 FPS target</span>
           </div>
           <p>
-            <strong>Using a controller?</strong>
-            Connect it before launching. Game Mode uses Android UHID
-            forwarding.
+            {selectedRunning
+              ? currentPerformance
+                ? `${currentPerformance.renderedFps} FPS live · ${
+                    currentPerformance.skippedFrames === 0
+                      ? "No skipped frames"
+                      : `${currentPerformance.skippedFrames} skipped frame${
+                          currentPerformance.skippedFrames === 1 ? "" : "s"
+                        }`
+                  } in the last second`
+                : "Session active · Measuring frame delivery…"
+              : launchDisabled
+                ? "Select an authorized device to begin."
+                : `${selectedDevice ? formatDeviceName(selectedDevice) : "Device"} is ready over USB.`}
           </p>
-        </aside>
+        </div>
 
-        <LogPanel logs={logs} onClear={() => setLogs([])} />
+        <div className="launch-actions">
+          {selectedRunning && (
+            <button
+              className="button button--stop"
+              type="button"
+              onClick={() => void stop()}
+              disabled={selectedBusy}
+            >
+              <span className="stop-square" />
+              Stop
+            </button>
+          )}
+          <button
+            className="button button--launch"
+            type="button"
+            onClick={() => void launch()}
+            disabled={launchDisabled}
+          >
+            <span>
+              {selectedBusy
+                ? "Starting…"
+                : selectedRunning
+                  ? "Running"
+                  : "Start mirroring"}
+            </span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m7 4 6 6-6 6" />
+            </svg>
+          </button>
+        </div>
       </section>
+
+      <aside className="controller-bar">
+        <svg viewBox="0 0 28 20" aria-hidden="true">
+          <path d="M8.5 4.5h11c3 0 5.2 2.4 5.9 6.1l.6 3.1c.4 2.2-2.2 3.6-3.8 2l-2.5-2.4H8.3l-2.5 2.4c-1.6 1.6-4.2.2-3.8-2l.6-3.1c.7-3.7 2.9-6.1 5.9-6.1Z" />
+          <path d="M7 9h4M9 7v4M19.5 8.5h.01M22 10.5h.01" />
+        </svg>
+        <p>
+          <strong>Controller input</strong>
+          <span>Connect before launch for Android UHID forwarding.</span>
+        </p>
+        <span className="controller-bar__meta">USB or Bluetooth</span>
+      </aside>
+
+      <LogPanel logs={logs} onClear={() => setLogs([])} />
     </main>
   );
 }
