@@ -69,6 +69,7 @@ jobs:
             ~/.cargo/git
             gui/scrcpy-go/src-tauri/target
           key: linux-rust-${{ hashFiles('gui/scrcpy-go/src-tauri/Cargo.lock') }}
+          restore-keys: linux-rust-
       - name: Install frontend dependencies and test
         working-directory: gui/scrcpy-go
         run: |
@@ -123,6 +124,9 @@ jobs:
           appimage=$(find "$PWD/packages" -name '*.AppImage' -print -quit)
           chmod +x "$appimage"
           APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a -s '-screen 0 1280x1024x24' bash gui/scrcpy-go/scripts/smoke-linux-gui.sh "$appimage" appimage
+          backend=$(dirname "$(dpkg -L scrcpy-go | grep '/backend/scrcpy$')")
+          xvfb-run -a -s '-screen 0 1280x1024x24' bash gui/scrcpy-go/scripts/smoke-linux-connected.sh "$backend" /usr/bin/scrcpy-go deb-device-transition
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a -s '-screen 0 1280x1024x24' bash gui/scrcpy-go/scripts/smoke-linux-connected.sh "$backend" "$appimage" appimage-device-transition
       - uses: actions/upload-artifact@v7
         if: always()
         with:
