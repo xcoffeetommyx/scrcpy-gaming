@@ -4,16 +4,13 @@ pub fn supports_usb_setup() -> bool {
 }
 
 #[tauri::command]
-pub async fn setup_usb(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn setup_usb() -> Result<String, String> {
     #[cfg(target_os = "linux")]
     {
-        use tauri::Manager;
-        let script = app
-            .path()
-            .resolve("linux/setup-usb.sh", tauri::path::BaseDirectory::Resource)
-            .map_err(|_| "USB setup is missing. Reinstall Scrcpy GO.")?;
+        // Root cannot necessarily read an AppImage's user-owned FUSE mount.
+        // Pass only this compile-time, fixed script, never frontend input.
         let output = tokio::process::Command::new("pkexec")
-            .arg("/bin/sh").arg(script)
+            .args(["/bin/sh", "-c", include_str!("../linux/setup-usb.sh")])
             .stdin(std::process::Stdio::null())
             .output().await
             .map_err(|_| "Could not open administrator authorization. Install your distribution's PolicyKit package using its software manager.")?;
@@ -24,7 +21,6 @@ pub async fn setup_usb(app: tauri::AppHandle) -> Result<String, String> {
     }
     #[cfg(not(target_os = "linux"))]
     {
-        let _ = app;
         Err("USB setup is only needed on Linux.".to_owned())
     }
 }

@@ -2,13 +2,62 @@
 
 **Gaming Optimized**
 
-Scrcpy GO is the Windows-first launcher for `scrcpy-gaming`. It discovers
+Scrcpy GO is the Windows and Linux desktop launcher for `scrcpy-gaming`. It discovers
 Android devices through the bundled ADB, lets you choose between connected
 devices, applies a game mode profile, and runs the existing packaged scrcpy
 client. It does not replace or embed scrcpy's video and input engine.
 
 Each device has an independent mirroring session. You may switch the device
 selector and launch or stop another device without closing existing sessions.
+
+## Download and install
+
+Get the installer from [GitHub Releases](https://github.com/xcoffeetommyx/scrcpy-gaming/releases).
+Use the Windows `.exe`, the Linux `.deb` for Lubuntu/Ubuntu/Debian, or the Linux
+AppImage for other compatible Intel/AMD 64-bit desktops. Source-code archives
+are not installers. See each release's testing notes before choosing a preview.
+
+On Lubuntu, open the `.deb` with the graphical package installer, approve
+installation, and open **Scrcpy GO** from the application menu. USB access rules
+are installed with the package; reconnect the phone after installation.
+
+For AppImage, enable **Allow executing file as program** in your file manager's
+Properties/Permissions and open the file. If the phone needs USB access, expand
+**Linux USB connection help** inside the app and click **Set up USB access**.
+Approve the graphical administrator prompt and reconnect the phone. This uses
+the desktop's PolicyKit service and udev; it does not run the whole app as root.
+The USB rule grants access to the active local desktop user, not every account.
+AppImages require a compatible glibc-based desktop and AppImage/FUSE support;
+some distributions need their FUSE 2 compatibility package installed through
+the software manager. The `.deb` is recommended for Lubuntu.
+
+Linux builds use Ubuntu 22.04 as their compatibility baseline. The initial
+target is Lubuntu 24.04 x86_64; ARM, 32-bit Linux, and musl-based distributions
+are not covered. Wayland compositors control display presentation and may
+emulate exclusive fullscreen. Use an X11 session when actual display mode
+switching is needed. Audio, controllers, and graphics still require testing
+on the destination hardware.
+
+## Building Linux packages (developers)
+
+The **Scrcpy GO desktop packages** GitHub Actions workflow builds the customized
+C client and Android server, tests the launcher, and produces `.deb` and
+AppImage artifacts on Ubuntu 22.04. It verifies packaged executables, desktop
+integration, shared libraries, and GUI startup under a virtual X display.
+These checks do not replace gameplay and USB testing on a physical Linux PC.
+
+For local builds, install the Linux dependencies listed in
+`.github/workflows/scrcpy-go.yml`, plus Node 24, Rust, JDK 17 and the Android SDK.
+Build `release/build_linux.sh x86_64` and the Android server, then copy the
+server APK to `release/work/build-linux-x86_64/dist/scrcpy-server`.
+From `gui/scrcpy-go`, run `npm ci` and `npm run tauri build`.
+The cross-platform staging script validates and bundles that backend. Use
+`SCRCPY_GO_BACKEND_DIR` to supply a different distribution directory.
+
+Packaged resources use platform-specific executable names; development falls
+back to `release/work/build-linux-x86_64/dist` on Linux. Linux-specific Tauri
+settings live in `src-tauri/tauri.linux.conf.json`; Windows retains NSIS and its
+existing upgrade hooks.
 
 ## Gaming display modes
 

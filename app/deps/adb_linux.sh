@@ -19,7 +19,7 @@ else
     mkdir -p "$PROJECT_DIR"
     cd "$PROJECT_DIR"
     ZIP_PREFIX=platform-tools
-    unzip "../$FILENAME" "$ZIP_PREFIX"/adb
+    unzip "../$FILENAME" "$ZIP_PREFIX"/adb "$ZIP_PREFIX"/NOTICE.txt
     mv "$ZIP_PREFIX"/* .
     rmdir "$ZIP_PREFIX"
 fi

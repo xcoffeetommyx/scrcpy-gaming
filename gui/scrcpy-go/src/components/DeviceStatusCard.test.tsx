@@ -28,6 +28,23 @@ function render(snapshot: DeviceSnapshot, selectedSerial: string | null) {
 }
 
 describe("device status presentation", () => {
+  it("offers explicit Linux USB setup when access is denied", () => {
+    const markup = renderToStaticMarkup(
+      <DeviceStatusCard
+        snapshot={{ kind: "unavailable", title: "Allow USB access", message: "Reconnect after setup.", count: 1, readyCount: 0, devices: [{ ...physical, state: "no permissions" }] }}
+        selectedSerial={null}
+        activeSessions={new Map()}
+        refreshing={false}
+        onSelect={() => {}}
+        onRefresh={() => {}}
+        usbSetup={{ busy: false, message: "", onSetup: () => {} }}
+      />,
+    );
+    expect(markup).toContain('class="device-details" open=""');
+    expect(markup).toContain("Set up USB access");
+    expect(markup).toContain("administrator password");
+  });
+
   it("keeps multi-device selection visible and identifies the selected device", () => {
     const markup = render(
       {
@@ -83,5 +100,6 @@ describe("device status presentation", () => {
     expect(markup).toContain("<summary>Technical details</summary>");
     expect(markup).toContain(rawError);
     expect(markup).not.toContain("Android</span>");
+    expect(markup).not.toContain("Set up USB access");
   });
 });

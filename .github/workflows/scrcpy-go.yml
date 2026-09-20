@@ -43,10 +43,15 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew -p server assembleRelease
+      - uses: actions/cache@v4
+        with:
+          path: app/deps/work
+          key: linux-backend-${{ runner.os }}-${{ hashFiles('app/deps/**.sh', 'app/deps/_init', 'app/deps/patches/**') }}
       - name: Build the bundled Linux client
         run: |
           release/build_linux.sh x86_64
           cp server/build/outputs/apk/release/server-release-unsigned.apk release/work/build-linux-x86_64/dist/scrcpy-server
+          bash gui/scrcpy-go/scripts/bundle-linux-libraries.sh
           release/work/build-linux-x86_64/dist/scrcpy --help | grep -- --fullscreen-exclusive
           release/work/build-linux-x86_64/dist/adb version
       - name: Install frontend dependencies and test

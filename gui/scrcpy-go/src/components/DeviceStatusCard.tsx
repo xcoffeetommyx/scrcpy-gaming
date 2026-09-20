@@ -139,7 +139,7 @@ export function DeviceStatusCard({
         </div>
       )}
       {usbSetup && (
-        <details className="device-details">
+        <details className="device-details" open={snapshot.devices.some((entry) => entry.state === "no permissions") || undefined}>
           <summary>Linux USB connection help</summary>
           <p>Allow this desktop account to connect to Android phones. Setup asks for your administrator password once.</p>
           <button className="usb-setup-button" type="button" disabled={usbSetup.busy} onClick={usbSetup.onSetup}>

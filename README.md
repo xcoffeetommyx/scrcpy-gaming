@@ -1,7 +1,35 @@
-> [!WARNING]
-> **This GitHub repo (<https://github.com/Genymobile/scrcpy>) is the only official
-source for the project. Do not download releases from random websites, even if
-their name contains `scrcpy`.**
+# Scrcpy GO — Gaming Optimized
+
+A graphical desktop app for playing and mirroring Android on your computer.
+Choose your phone, select a profile and display mode, and click Start. The app
+includes its own scrcpy and ADB backend; everyday use needs no terminal.
+
+**[Download Scrcpy GO installers](https://github.com/xcoffeetommyx/scrcpy-gaming/releases)**
+
+- **Windows:** download the `windows-x64-setup.exe` installer.
+- **Lubuntu / Ubuntu / Debian:** use the Linux `amd64.deb` installer when listed
+  in the release assets. Open it with your software/package installer, then open
+  **Scrcpy GO** from the application menu.
+- **Other Linux desktops:** use the `x86_64.AppImage` when listed. In the file
+  manager's Properties → Permissions, allow execution, then open it.
+
+Linux initially targets Intel/AMD 64-bit desktops, with Lubuntu 24.04 as the
+first user test target. Releases identify any preview builds and their tested
+coverage. Broad Linux compatibility is a goal, not a guarantee for every distro.
+
+Enable USB debugging on your phone and accept its authorization prompt. If Linux
+cannot access it, open **Linux USB connection help → Set up USB access** in the
+app, approve the desktop password prompt, and reconnect the phone.
+
+Features include independent device sessions, performance profiles, native or
+virtual displays, fullscreen options, 60/120 FPS pacing, and physical-screen
+blanking while streaming. See the [launcher guide](gui/scrcpy-go/README.md).
+
+This is an independent fork with a custom launcher, not an official Genymobile
+release. The original scrcpy project is at [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy).
+Its backend documentation follows.
+
+---
 
 # scrcpy (v4.1)
 
