@@ -15,7 +15,7 @@
   --border-strong: #353c46;
   --text: #f2f4f7;
   --text-secondary: #b5bdc8;
-  --text-muted: #7e8794;
+  --text-muted: #a1aab6;
   --blue: #6f91ff;
   --blue-hover: #83a0ff;
   --blue-pressed: #5f80e8;
@@ -95,20 +95,12 @@ button {
   height: 38px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #34405a;
-  border-radius: 10px;
-  color: #9bb1ff;
-  background: #151b28;
 }
 
-.brand-mark svg {
-  width: 27px;
-  height: 27px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.7;
+.brand-mark img {
+  display: block;
+  width: 38px;
+  height: 38px;
 }
 
 .brand__copy {
@@ -129,7 +121,7 @@ button {
 .brand__copy p {
   margin: 4px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
 }
 
@@ -189,7 +181,7 @@ button {
   display: block;
   margin-bottom: 4px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.65px;
   line-height: 1;
@@ -211,7 +203,7 @@ button {
   flex: 0 0 auto;
   padding-top: 13px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   font-weight: 550;
 }
@@ -316,7 +308,7 @@ button {
   gap: 6px;
   margin-bottom: 5px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -338,14 +330,10 @@ button {
 }
 
 .device-card__copy p {
-  display: -webkit-box;
-  overflow: hidden;
   margin: 5px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
 .state-connected .device-glyph {
@@ -392,7 +380,7 @@ button {
 
 .device-picker > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -436,7 +424,7 @@ button {
   border-radius: var(--radius-control);
   color: var(--text-muted);
   background: var(--control);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .device-footer strong {
@@ -452,7 +440,7 @@ button {
   padding: 8px 0 0;
   border-top: 1px solid var(--border-soft);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .device-details summary {
@@ -471,7 +459,7 @@ button {
   overflow: auto;
   color: var(--text-secondary);
   font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 10px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 
@@ -480,7 +468,7 @@ button {
 }
 
 .performance-panel:disabled .profile-list {
-  opacity: 0.55;
+  opacity: 0.82;
 }
 
 .profile-list {
@@ -570,7 +558,7 @@ button {
 
 .profile-card__heading small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.2px;
 }
@@ -580,12 +568,9 @@ button {
 }
 
 .profile-card__description {
-  overflow: hidden;
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .profile-card__metrics {
@@ -594,8 +579,8 @@ button {
   align-items: center;
   gap: 0;
   margin-top: 2px;
-  color: #939dab;
-  font-size: 10px;
+  color: #b0bac7;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;
@@ -672,18 +657,15 @@ button {
 
 .session-panel__heading > span {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 .session-panel__copy p {
-  overflow: hidden;
   margin: 5px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .launch-actions {
@@ -735,7 +717,7 @@ button {
 }
 
 .button--launch:disabled {
-  color: #7f8999;
+  color: #b1bac6;
   border-color: #303640;
   background: #252a32;
   cursor: not-allowed;
@@ -823,7 +805,7 @@ button {
   align-items: baseline;
   gap: 8px;
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -834,15 +816,13 @@ button {
 }
 
 .controller-bar p span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .controller-bar__meta {
   flex: 0 0 auto;
-  color: #6f7885;
-  font-size: 9px;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .activity-panel {
@@ -891,22 +871,22 @@ button {
 
 .activity-panel__title {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
 .activity-panel__latest {
   overflow: hidden;
   margin-left: 12px;
-  color: #69727f;
-  font-size: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .activity-panel__count {
   margin-left: 16px;
-  font-size: 9px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -920,7 +900,7 @@ button {
   align-items: center;
   justify-content: space-between;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .activity-panel__toolbar button {
@@ -930,7 +910,7 @@ button {
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .activity-panel__toolbar button:hover:not(:disabled) {
@@ -964,16 +944,16 @@ button {
   align-items: baseline;
   gap: 10px;
   padding: 2px 0;
-  color: #929aa7;
+  color: #b0bac7;
   font-family: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.5;
   grid-template-columns: 18px minmax(0, 1fr);
 }
 
 .log-line > span {
   color: #7897ff;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -997,7 +977,7 @@ button {
 
 .log-empty {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 @keyframes spin {

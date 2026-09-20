@@ -38,7 +38,13 @@ export function LogPanel({ logs, onClear }: LogPanelProps) {
             Clear
           </button>
         </div>
-        <div className="log-panel__body" ref={bodyRef} aria-live="polite">
+        <div
+          className="log-panel__body"
+          ref={bodyRef}
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {logs.length === 0 ? (
             <p className="log-empty">Launch activity will appear here.</p>
           ) : (

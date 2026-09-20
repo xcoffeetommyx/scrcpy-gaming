@@ -44,10 +44,7 @@ export function DeviceStatusCard({
       : STATUS_LABELS[snapshot.kind];
 
   return (
-    <section
-      className={`panel device-panel state-${snapshot.kind}`}
-      aria-live="polite"
-    >
+    <section className={`panel device-panel state-${snapshot.kind}`}>
       <header className="panel-header">
         <div>
           <span className="panel-kicker">Device</span>
@@ -79,7 +76,12 @@ export function DeviceStatusCard({
             <path d="M17 8h6M18.5 31.5h3" />
           </svg>
         </div>
-        <div className="device-card__copy">
+        <div
+          className="device-card__copy"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <div className="device-state">
             <span className="status-dot" />
             {statusLabel}

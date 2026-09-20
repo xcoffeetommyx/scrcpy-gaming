@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import brandIcon from "../assets/icon.svg";
 import { DeviceStatusCard } from "./components/DeviceStatusCard";
 import { LogPanel } from "./components/LogPanel";
 import { ProfileSelector } from "./components/ProfileSelector";
@@ -86,13 +87,15 @@ export default function App() {
     setLogs((current) => appendBounded(current, entry));
   }, []);
 
-  const refreshDevices = useCallback(async () => {
+  const refreshDevices = useCallback(async (showPending = false) => {
     if (pollInFlight.current) {
       return;
     }
 
     pollInFlight.current = true;
-    setRefreshing(true);
+    if (showPending) {
+      setRefreshing(true);
+    }
     try {
       const snapshot = await invoke<DeviceSnapshot>("get_device_status");
       if (mounted.current) {
@@ -115,7 +118,7 @@ export default function App() {
       }
     } finally {
       pollInFlight.current = false;
-      if (mounted.current) {
+      if (mounted.current && showPending) {
         setRefreshing(false);
       }
     }
@@ -275,10 +278,7 @@ export default function App() {
       <header className="app-header">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 36 36">
-              <rect x="7.5" y="4.5" width="17" height="27" rx="4" />
-              <path d="M13 9h6M20 13l5 5-5 5M24.5 18H15" />
-            </svg>
+            <img src={brandIcon} alt="" />
           </div>
           <div className="brand__copy">
             <h1>Scrcpy GO</h1>
@@ -287,6 +287,7 @@ export default function App() {
         </div>
         <div
           className={`session-status ${activeSessionCount ? "is-running" : ""}`}
+          role="status"
         >
           <span className="status-dot" />
           {activeSessionCount
@@ -302,7 +303,7 @@ export default function App() {
           activeSessions={sessions}
           refreshing={refreshing}
           onSelect={setSelectedSerial}
-          onRefresh={() => void refreshDevices()}
+          onRefresh={() => void refreshDevices(true)}
         />
 
         <ProfileSelector
@@ -343,6 +344,11 @@ export default function App() {
               type="button"
               onClick={() => void stop()}
               disabled={selectedBusy}
+              aria-label={
+                selectedDevice
+                  ? `Stop mirroring ${formatDeviceName(selectedDevice)}`
+                  : "Stop mirroring"
+              }
             >
               <span className="stop-square" />
               Stop
@@ -353,6 +359,11 @@ export default function App() {
             type="button"
             onClick={() => void launch()}
             disabled={launchDisabled}
+            aria-label={
+              selectedDevice && !selectedRunning && !selectedBusy
+                ? `Start mirroring ${formatDeviceName(selectedDevice)}`
+                : undefined
+            }
           >
             <span>
               {selectedBusy

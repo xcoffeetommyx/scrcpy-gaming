@@ -42,6 +42,7 @@ describe("device status presentation", () => {
     );
 
     expect(markup).toContain("Galaxy S23");
+    expect(markup).toContain('role="status" aria-live="polite" aria-atomic="true"');
     expect(markup).toContain('aria-label="Device to mirror"');
     expect(markup).toContain('value="phone-123" selected=""');
     expect(markup).toContain("Android Emulator");

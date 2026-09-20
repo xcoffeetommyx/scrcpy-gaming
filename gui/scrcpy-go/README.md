@@ -95,3 +95,7 @@ the distribution is missing or outdated.
 
 Tauri produces the configured NSIS installer under
 `src-tauri/target/release/bundle/nsis`.
+
+The launcher, browser favicon, and installer icons use `assets/icon.svg` as
+their source. After editing it, regenerate the packaged platform icons with
+`npm run tauri -- icon assets/icon.svg` before building the installer.
