@@ -5,6 +5,7 @@ import com.genymobile.scrcpy.AsyncProcessor;
 import com.genymobile.scrcpy.CleanUp;
 import com.genymobile.scrcpy.Options;
 import com.genymobile.scrcpy.device.Device;
+import com.genymobile.scrcpy.device.ScreenBlackout;
 import com.genymobile.scrcpy.display.DisplayInfo;
 import com.genymobile.scrcpy.model.DeviceApp;
 import com.genymobile.scrcpy.model.Point;
@@ -108,6 +109,7 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
     private final MotionEvent.PointerCoords[] pointerCoords = new MotionEvent.PointerCoords[PointersState.MAX_POINTERS];
 
     private boolean keepDisplayPowerOff;
+    private final ScreenBlackout screenBlackout;
 
     // Used for resetting video encoding on RESET_VIDEO message or for sending camera controls
     private SurfaceCapture surfaceCapture;
@@ -116,6 +118,9 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
         this.camera = options.getVideoSource() == VideoSource.CAMERA;
         this.controlChannel = controlChannel;
         this.cleanUp = cleanUp;
+        // Inspect Android controllers before the desktop client creates its UHID devices.
+        // Built-in handheld controls may be marked external USB devices, so do not filter by bus or brand.
+        this.screenBlackout = options.getNewDisplay() != null && ScreenBlackout.hasGameController() ? new ScreenBlackout() : null;
 
         if (this.camera) {
             // Unused for camera
@@ -283,6 +288,9 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
                 Ln.e("Controller error", e);
             } finally {
                 Ln.d("Controller stopped");
+                if (screenBlackout != null) {
+                    screenBlackout.close();
+                }
                 if (uhidManager != null) {
                     uhidManager.closeAll();
                 }
@@ -855,6 +863,19 @@ public class Controller implements AsyncProcessor, VirtualDisplayListener {
     }
 
     private void setDisplayPower(boolean on) {
+        if (screenBlackout != null) {
+            // Several handhelds disconnect their integrated gamepad when the panel is powered off.
+            // Cover only display 0, keeping both the hardware controller and virtual game display alive.
+            keepDisplayPowerOff = false;
+            if (on) {
+                screenBlackout.close();
+                Device.setDisplayPower(0, true);
+                Ln.i("Handheld screen restored");
+            } else if (Device.setDisplayPower(0, true) && screenBlackout.show()) {
+                Ln.i("Handheld screen black; built-in controls remain active (panel stays powered)");
+            }
+            return;
+        }
         // Change the power of the main display when mirroring a virtual display
         int targetDisplayId = displayId != Device.DISPLAY_ID_NONE ? displayId : 0;
         boolean setDisplayPowerOk = Device.setDisplayPower(targetDisplayId, on);

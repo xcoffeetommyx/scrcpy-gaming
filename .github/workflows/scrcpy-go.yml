@@ -42,7 +42,7 @@ jobs:
       - name: Build the Android server
         run: |
           chmod +x gradlew
-          ./gradlew -p server assembleRelease
+          ./gradlew -p server assembleRelease testDebugUnitTest
       - uses: actions/cache/restore@v4
         id: backend-cache
         with:

@@ -50,7 +50,7 @@ export function DisplaySelector({ settings, disabled, onChange }: DisplaySelecto
           <span>Phone screen</span>
           <select value={settings.phoneScreenOff ? "off" : "on"} onChange={(event) =>
             onChange({ ...settings, phoneScreenOff: event.target.value === "off" })}>
-            <option value="off">Off while streaming</option>
+            <option value="off">Black while streaming</option>
             <option value="on">Leave on</option>
           </select>
         </label>
@@ -82,7 +82,7 @@ export function DisplaySelector({ settings, disabled, onChange }: DisplaySelecto
       </div>
       <p className="display-hint">
         {settings.phoneScreenOff
-          ? "The phone screen turns off while streaming stays active. The phone remains unlocked; this does not PIN-lock it. Unlock your phone before starting. Its screen and charging sleep setting are restored when the session ends."
+          ? "The device screen goes black while streaming stays active. In virtual display mode, detected handheld controls stay connected by keeping the panel powered behind a black cover. The device remains unlocked; this does not PIN-lock it. Unlock it before starting. Its screen and charging sleep setting are restored when the session ends."
           : "The phone screen stays on normally."}
         {" Alt+O turns the phone screen off; Alt+Shift+O turns it back on. The power button may interrupt the virtual display."}
       </p>

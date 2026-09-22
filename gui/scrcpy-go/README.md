@@ -95,17 +95,39 @@ Settings are independent per device for the current launcher session. Stop
 mirroring before changing them. Save your game first: scrcpy destroys the
 virtual display and its running apps when the display closes.
 
-## Phone screen off
+## Black screen and handheld controls
 
-**Phone screen → Off while streaming** (default) turns off the physical panel
+**Phone screen → Black while streaming** (default) keeps the device screen black
 while keeping the stream active. Unlock the phone before starting. This is
 screen blanking, not PIN/fingerprint locking: the phone remains unlocked.
 The launcher passes `--turn-screen-off --stay-awake`; the latter prevents
 automatic sleep while charging, and scrcpy restores the charging sleep setting
 and physical panel on exit. Virtual displays also retain `--keep-active`.
 
-Use **Leave on** to opt out. During a session, **Alt+O** turns the phone panel
-off and **Alt+Shift+O** turns it back on. These shortcuts do not change the
+When a gamepad or joystick is already connected to Android at session start,
+virtual display sessions cover the physical screen with black instead of
+powering it off. Some handhelds, including the Mangmi Air X, disconnect their
+built-in controller when the panel is powered off. The black cover leaves that
+controller connected and preserves Android's normal input routing. Detection
+uses Android input sources, not a model whitelist, and includes controllers
+reported as external USB hardware. Desktop-forwarded gamepads are created after
+this detection. Connect or enable the handheld controls before starting.
+
+This mode needs a virtual display (720p, 1080p, or Custom), since covering the
+screen in Phone native mode would also cover the mirrored picture. The panel
+stays powered; an LCD may still have backlight glow and power use is higher than
+with the panel off. If a device's firmware does not support the black cover,
+Scrcpy GO keeps its screen on and reports the limitation in Activity rather than
+disconnecting its controls. The cover is removed when the session ends.
+
+The black cover does not pause apps on the physical display. Turn off animated
+launcher demos/screensavers (such as ES-DE's) or leave a static app behind the
+cover before docking. Running a launcher demo alongside the game and video
+encoder can reduce frame rate and responsiveness. Choose **Low latency** under
+Frame pacing if you prefer immediate presentation over buffering for smoothness.
+
+Use **Leave on** to opt out. During a session, **Alt+O** blacks the device screen
+and **Alt+Shift+O** restores it. These shortcuts do not change the
 preference for the next launch. The physical power button invokes Android's
 normal sleep/lock behavior, which may suspend the virtual display too. This
 was observed on the connected Samsung S23+ running Android 16; panel-only

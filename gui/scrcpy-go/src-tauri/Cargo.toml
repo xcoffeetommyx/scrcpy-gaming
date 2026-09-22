@@ -1,6 +1,6 @@
 [package]
 name = "scrcpy-go"
-version = "0.2.1"
+version = "0.3.0"
 description = "Gaming-optimized launcher for scrcpy-gaming"
 authors = ["scrcpy-gaming contributors"]
 edition = "2021"
